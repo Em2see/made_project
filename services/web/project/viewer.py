@@ -1,10 +1,12 @@
 from flask import Blueprint, url_for, make_response, send_from_directory
 from flask import jsonify, send_file, request, g, render_template, current_app
-from . import db
+from .db import get_db
 import os
 import uuid
 
-viewer = Blueprint('viewer', __name__)
+viewer = Blueprint('viewer', __name__, template_folder='../view')
+viewer.config = {}
+paths = {}
 
 defaults = {
     "radius": 300,
@@ -12,7 +14,12 @@ defaults = {
     "tech": 5
 }
 
-paths = current_app.config['PATHS']
+@viewer.record
+def record_params(setup_state):
+  app = setup_state.app
+  viewer.config = {key:value for key,value in app.config.items()}
+  app.logger.info(str(viewer.config))
+  paths = viewer.config['PATHS']
 
 @viewer.route('/', methods=['GET'])
 def index():

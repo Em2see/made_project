@@ -6,15 +6,13 @@ from copy import copy
 from .getter import getter
 from .viewer import viewer
 from .db import close_db
+import logging
 
 def_path = os.path.abspath("./")
 view_path = os.path.join(def_path, "view")
 
 app = Flask(__name__)
 app.logger.setLevel(logging.INFO)
-app.register_blueprint(getter, __name__)
-app.register_blueprint(viewer, __name__, template_folder=view_path)
-
 ## config
 
 app.config['SECRET_KEY'] = 'secret!'
@@ -35,6 +33,8 @@ app.config['PATHS'] = {
     "fonts_path": os.path.join(view_path, "static", "themes/default/assets/fonts")
 }
 
+app.register_blueprint(getter)
+app.register_blueprint(viewer)
 
 @app.teardown_appcontext
 def teardown_df(exception):

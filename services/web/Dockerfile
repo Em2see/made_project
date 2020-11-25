@@ -3,10 +3,12 @@ FROM ubuntu:16.04
 RUN apt-get update \
     && apt-get install -yq --no-install-recommends \
     python3 \
-    python3-pip
+    python3-pip \
+    libpq-dev python3-dev build-essential \
+    && python3 -m pip install --upgrade pip setuptools wheel
 COPY . /app
-RUN pip3 install -r /app/requirements.txt\
-    && pip3 install setuptools --upgrade
+RUN pip3 install -r /app/requirements.txt
+RUN apt-get -o Dpkg::Options::='--force-confmiss' install --reinstall -y netbase
 ENV FLASK_APP=project/__init__.py
 ENV FLASK_ENV=development
 ENV FLASK_RUN_HOST=0.0.0.0
