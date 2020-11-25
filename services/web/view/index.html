@@ -1,57 +1,32 @@
-<html>
+<!doctype html>
+<title>Visualization</title>
 <head>
-	<!-- inject:head:js -->
-	<!-- endinject -->
-	<!-- inject:head:css -->
-	<!-- endinject -->
+	<script src="{{ url_for('staticfile', filename='jquery-3.5.1.min.js') }}">
+	</script>
+	<link rel="stylesheet" href="{{ url_for('staticfile', filename='semantic.min.css') }}">
+	</link>
+	<script src="{{ url_for('staticfile', filename='semantic.min.js') }}">
+	</script>
 </head>
 <body>
-<div class="ui segment">
-	<div class="ui input">
-		<input type="text" id="urltext" placeholder="Your link" value="http://verizon.com/">
-	</div>
-	<br>
-	<br>
-	<div class="ui floating dropdown button" id="size-select">
-		<span class="text">Size</span>
-		<div class="menu">
+	<div class="ui secondary pointing menu">
+		<div class="item">
+			<!-- <img src="{{ url_for('static', filename='imgs/logo.png') }}"> -->
+			<i class="podcast icon big"></i>
 		</div>
+		<a class="{{ ('active ' if request.url_rule.endpoint == 'index' else '') + 'item' }}"
+			href="{{url_for('index')}}">
+			Visualization
+		</a>
+		<a class="{{ ('active ' if request.url_rule.endpoint == 'table' else '') + 'item' }}"
+			href="{{url_for('table')}}">
+			Add Points
+		</a>
 	</div>
-	<div class="ui floating dropdown button" id="color-select">
-		<span class="text">Color</span>
-		<div class="menu">
-		</div>
+	<div class="ui segment">
+		<section class="content">
+		{% block content %}{% endblock %}
+		</section>
 	</div>
-	<div class="content" id="content">
-		<div id="qrcode"></div>
-	</div>
-	<br>
+<body>
 
-	<div class="ui button">
-		<a class="ui basic red" id="save_btn">Save</a>
-	</div>
-  
-	<button class="ui button">
-		<a class="ui basic red" id="send_btn">Send</a>
-	</button>
-  
-	<button class="ui button" id="print_btn">Print</button>
-
-  
-  <div class="ui inverted dimmer">
-    <div class="ui text loader">Loading</div>
-  </div>
-  <p></p>
-  <p></p>
-  
-  
-  
-</div>
-
-	<!-- inject:body:js -->
-	<!-- endinject -->
-
-</body>
-
-
-</html>

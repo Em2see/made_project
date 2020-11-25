@@ -1,0 +1,93 @@
+{% extends 'index.html' %}
+
+{% block content %}
+	
+	<div class="ui sidebar vertical menu">
+		<form class="ui form">
+			<div class="field item">
+				<label>Radius:</label>
+				<select class="ui fluid dropdown" name="radius">
+					<option value="">Radius</option>
+					<option value=100>200</option>
+					<option value=200>300</option>
+					<option value=300>400</option>
+					<option value=400>500</option>
+				</select>
+			</div>
+			<div class="field item">
+				<label>Size:</label>
+				<select class="ui fluid dropdown" name="size">
+					<option value="">Sizes</option>
+					<option value=10>10</option>
+					<option value=20>20</option>
+					<option value=50>50</option>
+					<option value=100>100</option>
+				</select>
+			</div>
+			<div class="field item">
+				<label>Technologies:</label>
+				<select multiple="" class="ui fluid dropdown" name="tech">
+					<option value="">Technologies</option>
+					<option value=2>2G</option>
+					<option value=4>3G</option>
+					<option value=5>4G</option>
+					<option value=9>5G</option>
+				</select>
+			</div>
+		</form>
+	</div>
+	<div class="pusher">
+		<button class="ui primary button" 
+			onclick="(function(){
+				$('.ui.sidebar')
+				  .sidebar('toggle')
+				;
+			})();return false;">Menu</button>
+		<!--
+		<h2 class="ui header centered">Antennas map</h2>
+		<img class="ui large centered image" id="antennas" src="{{ url_for('images', filename='antennas_default.png') }}"/>
+		-->
+		<h2 class="ui header centered">Heat Map</h2>
+			
+		<div class="ui big images">
+			<img class="ui large centered image" id="heatmap" src="{{ url_for('images', filename='num_cells_heatmap.png') }}"/>
+			<img class="ui large centered image" id="heatmap" src="{{ url_for('images', filename='spd_heatmap.png') }}"/>
+			<img class="ui large centered image" id="heatmap" src="{{ url_for('images', filename='subs_heatmap.png') }}"/>
+			<img class="ui large centered image" id="heatmap" src="{{ url_for('images', filename='trf_heatmap.png') }}"/>
+		</div>
+		
+		<script>
+			$('.ui.sidebar').sidebar();
+			$('.ui.dropdown').dropdown();
+			
+			{% for name, value in defaults.items() %}
+				var $id = $('select[name ="{{ name }}"]')
+				$id.dropdown('set selected', {{ value }});
+				//we need to update actions for dropdowns to update defaults
+				$id.change(
+					function updateParams(event, target) {
+						var data = JSON.stringify({ "{{ name }}": this.value })
+						
+						$.ajax({
+							url: "{{ url_for('update_params') }}",
+							method: "POST",
+							dataType: 'json',
+							contentType: 'application/json',
+							data: data,
+							success: function (data) {
+								var heatmap_src = "{{ url_for('images', filename='heatmap_default.png') }}"
+								var antennas_src = "{{ url_for('images', filename='antennas_default.png') }}"
+						
+								$("#heatmap").attr("src", heatmap_src + "?timestamp=" + new Date().getTime());
+								$("#antennas").attr("src", antennas_src + "?timestamp=" + new Date().getTime());
+							}
+						})
+					}
+				)
+			{% endfor %}
+		</script>
+	</div>
+	
+	
+		
+{% endblock %}

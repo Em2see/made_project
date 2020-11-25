@@ -1,0 +1,160 @@
+{% extends 'index.html' %}
+
+{% block content %}
+	{% if (points.shape[0] > 0) %}
+		<!-- Modal -->
+		<div class="ui modal">
+			<i class="close icon"></i>
+			<div class="header">
+				Add point
+			</div>
+			<div class="content">
+				<form class="ui form" id="addpointform">
+					<h4 class="ui dividing header">Coordinates</h4>
+					<div class="field">
+						<div class="two fields">
+							<div class="field">
+								<label>X</label>
+								<input type="text" name="x" placeholder="X coordinate">
+							</div>
+							<div class="field">
+								<label>Y</label>
+								<input type="text" name="y" placeholder="Y coordinate">
+							</div>
+						</div>
+					</div>
+					<div class="field">
+						<label>Height</label>
+						<div class="fields">
+							<div class="eight wide field">
+								<input type="text" name="height" placeholder="Height">
+							</div>
+						</div>
+					</div>
+					<h4 class="ui dividing header">Params</h4>
+					<div class="field">
+						<label>Azimuth</label>
+						<div class="fields">
+							<div class="eight wide field">
+								<input type="text" name="azimuth" placeholder="Azimuth">
+							</div>
+						</div>
+					</div>
+					<div class="field">
+						<label>Technology</label>
+						<select class="ui fluid dropdown" name="tech">
+							<option value="">Technologies</option>
+							<option value="2">2G</option>
+							<option value="4">3G</option>
+							<option value="5">4G</option>
+							<option value="9">5G</option>
+						</select>
+					</div>
+					<div class="field">
+						<label>Capacity</label>
+						<div class="fields">
+							<div class="eight wide field">
+								<input type="text" name="cap" placeholder="Capacity">
+							</div>
+						</div>
+					</div>
+					<div class="ui segment">
+						<div class="field">
+							<div class="ui toggle checkbox">
+								<input type="checkbox" name="recalc" tabindex="0" class="hidden">
+								<label>Recalculate</label>
+							</div>
+						</div>
+					</div>
+				</form>
+				
+			</div>
+			<div class="actions">
+				<div class="ui black deny button">
+					Cancel
+				</div>
+				<div class="ui positive right labeled icon button">
+					Save
+					<i class="checkmark icon"></i>
+				</div>
+			</div>
+		</div>
+		<!-- Modal end -->
+		<button class="ui primary button"
+			onclick="(function () {
+				$('.ui.modal')
+				  .modal('show')
+				;
+			})()">Add</button>
+		<button class="ui primary button" id="recalc">Recalculate</button>
+		<table class="ui celled table">
+			<thead><tr>
+			<th/>
+			{% for name in points.columns.values %}
+				<th>{{ name }}</th>
+			{% endfor %}
+			</tr></thead>
+			<tbody>
+				{% for id_, point in points.iterrows() %}
+				<tr>
+					<td>
+						<button class="ui icon button">
+							<i class="trash red icon"></i>
+						</button>
+					</td>
+					{% for col in points.columns.values %}
+						<td data-label="{{ col }}">{{ point[col] }}</td>
+					{% endfor %}
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+		<script language="javascript">
+			$('.ui.dropdown')
+			  .dropdown()
+			;
+			$('button#recalc').click(function(){
+				$.ajax({
+					type: "GET",
+					url: "{{ url_for('run_calcs') }}",
+					success: function(data)
+					{
+					   location.reload();
+					}
+				})
+			})
+			function objSerializer(array) {
+				var out = Object();
+				array.forEach(function(item){
+					out[item['name']] = item['value']					
+				})
+				return out;
+			}
+			$('#addpointform').submit( function(e) {
+				e.preventDefault(); // avoid to execute the actual submit of the form.
+				var form = $(this);
+				var data = objSerializer(form.serializeArray())
+				$.ajax({
+					type: "POST",
+					url: "{{ url_for('addNewPoint') }}",
+					dataType: 'json',
+					contentType: 'application/json',
+					data: JSON.stringify(data),
+					success: function(data)
+					{
+					   location.reload();
+					}
+				})
+
+				
+			});
+			$('.ui.modal').modal({
+				onApprove : function(){
+					console.log("approve")
+					$('#addpointform').submit()
+					
+				}
+			});
+		</script>
+	{% endif %}
+{% endblock %}
