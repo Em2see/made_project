@@ -1,0 +1,105 @@
+<html>
+<head>
+<script type="text/javascript" src="scripts/jquery.min.js"></script>
+<script type="text/javascript" src="scripts/socket.io.min.js"></script>
+<!-- TODO
+++++++++++++++++++++++++++++++++
+1. We need to add checking of supported constarints.
+2. 
+++++++++++++++++++++++++++++++++
+-->
+</head>
+<body>
+
+<br/>
+<br/>
+
+<video id="video1" autoplay></video>
+
+<select id="resolution">
+	<option value='std'>Just Video</option>
+	<option value='hd'>High Defenition</option>
+	<option value='vga' selected>VGA quality</option>
+</select>
+
+<select id="videoSource"></select>
+
+
+<button id='start-btn'>Record screen!</button>
+<button id='stop-btn'>Stop screen!</button>
+<div id="div"></div><br>
+<video id="video" height="120" width="160" autoplay></video>
+<a id="link"></a>
+
+<!-- <input type="file" accept="image/*" capture="camera" /> -->
+<p id='logline'></p>
+<script type="text/javascript">
+// web socket
+namespace = '/test';
+// Connect to the Socket.IO server.
+// The connection URL has the following format:
+//     http[s]://<domain>:<port>[/<namespace>]
+var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace);
+// Event handler for new connections.
+// The callback function is invoked when a connection with the
+// server is established.
+socket.on('connect', function() {
+	console.log('send request');
+	socket.emit('my_event', {data: 'I\'m connected!'});
+});
+// Event handler for server sent data.
+// The callback function is invoked whenever the server emits data
+// to the client. The data is then displayed in the "Received"
+// section of the page.
+socket.on('my_response', function(msg) {
+	console.log(msg.count + ': ' + msg.data);
+});
+
+var constraints = { video: { width: 640, height: 480},frameRate: {max:5} };
+
+var buffer_size_ms = 2000
+
+var rec_stopped = true
+
+var counter = 0
+
+var start = () => navigator.mediaDevices.getUserMedia(constraints)
+	.then(stream => {
+		$('video').attr('srcObject', stream)		
+		record(stream,buffer_size_ms)
+  }).catch(log);
+
+var record = (stream, ms) => {
+  var rec = new MediaRecorder(stream), data = [];
+  rec.ondataavailable = e => {
+	
+	socket.emit('video_event',{data: e.data})
+  };
+  rec.start(ms);
+  log(rec.state + " for "+ (ms / 1000) +" seconds...");
+  var stopped = new Promise((r, e) => (rec.onstop = r, rec.onerror = e));
+  //return Promise.all([stopped, wait(ms).then(() => rec.stop())])
+  //  .then(() => data);
+};
+
+var stop = stream => stream.getTracks().forEach(track => track.stop());
+var wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+var log = msg => $('#logline').html(msg);
+
+$('#start-btn').on('click',()=>{
+	log('Start recording')
+	start()
+})
+
+$('#stop-btn').on('click',()=>{
+	log('Stoped')
+	stop()
+})
+
+</script>
+
+
+</body>
+
+
+</html>

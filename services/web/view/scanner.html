@@ -1,0 +1,299 @@
+<html>
+<head>
+
+<style>
+.canvas {
+	position: absolute;
+	top:0;
+	left:0;
+	z-index:20;	
+}
+.svg {
+	position: absolute;
+	top:0;
+	left:0;
+	z-index:30;	
+}
+.video{
+	width: auto;
+	height: auto;
+	position: absolute;
+	top:0;
+	left:0;
+	z-index:10;
+}
+#container{
+	margin: 0 auto;
+	position: relative;
+	z-index:5;
+}
+
+</style>
+
+<script type="text/javascript" src="scripts/jquery.min.js"></script>
+<script type="text/javascript" src="scripts/add_functions.js"></script>
+<script type="text/javascript" src="scripts/socket.io.min.js"></script>
+<!-- TODO
+++++++++++++++++++++++++++++++++
+1. We need to add checking of supported constarints.
+2. 
+++++++++++++++++++++++++++++++++
+-->
+</head>
+<body>
+
+<br/>
+<br/>
+
+<div id='container'>
+<video class='video' id="video1" autoplay></video>
+<canvas id='canvas' style="display:inline;hidden:true;"></canvas>
+	<svg id='cv1' class='svg' xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 640">
+		<polygon id="frame" points="200,10 250,190 160,210 100,20" style="fill:none;stroke:none;stroke-width:1"/>
+	</svg>
+</div>
+
+<select id="resolution"></select>
+<select id="videoSource"></select>
+
+<button id='start-btn'>Record screen!</button>
+<button id='stop-btn'>Stop screen!</button>
+
+<p id='logline'></p>
+
+
+<!-- <input type="file" accept="image/*" capture="camera" /> -->
+
+<script type="text/javascript">
+
+var streams = {};
+
+<!-- check if the user have feature -->
+function hasGetUserMedia() {
+	return !!(navigator.mediaDevices &&
+		navigator.mediaDevices.getUserMedia);
+}
+/*
+Creating selectors for video source - camera choosing
+and quality
+*/
+var createVideoSelector = (deviceInfos)=>{
+	var $videoSelect = $('#videoSource');
+	deviceInfos.forEach(deviceInfo=>{
+		
+		if (deviceInfo.kind === 'videoinput'){
+			window.vs = deviceInfo
+			var $option = $('<option></option>')
+							.attr('value',deviceInfo.deviceId)
+							.text(deviceInfo.label || 'camera ' + ($('option',$videoSelect).length + 1))
+			$videoSelect.append($option);
+		}
+	})
+	
+	var added_options = $('option',$videoSelect)
+	if (added_options.length>0){
+		$("option:first",$videoSelect).attr("selected", true)
+	}
+	
+	//iterating through videosources
+	$("option",$videoSelect).each((idx,item)=>
+		navigator.mediaDevices
+			.getUserMedia({video:{deviceId:item.value}})
+			.then(stream=>{
+				var track = stream.getTracks()[0]
+				var cap = track.getCapabilities()
+				$(item).text(item.text + ' ' + cap.facingMode[0])
+			})
+	)
+	
+}
+
+var createQualitySelector = () => {
+	var options = [{val:'std',text:'Just Video'},{val:'hd',text:'High Definition'},{val:'vga',text:'VGA quality'}]
+	var $qualSelect = $('#resolution');
+	options.forEach(opt=>{
+		var $option = $('<option></option>').attr('value',opt.val)
+											.text(opt.text)
+		$option.text = 
+		$qualSelect.append($option);
+	})
+	$("option:first",$qualSelect).attr("selected", true)
+}
+
+var modify_video_containers_size = (height, width) => {
+	
+	var $svg = $("svg#cv1")
+	var $video = $('video#video1')
+	var objs = [$('canvas#canvas'),$svg]
+	
+	$video.attr("height",height)
+			.attr("width",width)
+	
+	$video.bind("loadedmetadata", function () {
+        width = this.videoWidth;
+        height = this.videoHeight;
+        console.log(width,height)
+		objs.forEach($item=> $item.attr("height",height).attr("width",width))
+		$svg.removeAttr('viewBox');
+		$svg.attr('viewBox',[0,0,height,width].join(' '))	
+        
+    });
+	
+	
+	
+	
+	
+}
+
+var apply_actions_to_elements = ()=>{
+	$("#resolution")
+		.on("change", ()=> get_stream())
+	
+	$("#videoSource")
+		.on("change", ()=> get_stream())
+		
+	$("#start-btn")
+		.on("click", ()=> get_stream())
+		
+	$("#stop-btn")
+		.on("click", ()=> {
+			if (window.stream) {
+				window.stream.getTracks().forEach(track => track.stop() );
+				window.stream = null
+			}
+		})
+}
+
+const getContraints = () => {
+	var val = $('#resolution').val()
+	var cam_id = $('#videoSource option:selected')[0].value
+	
+	var video_params = true;
+	var out_params = {video: {
+						deviceId: {exact: cam_id},
+						video: video_params
+					}};
+	
+	switch (val){
+		case 'hd':
+			video_params = {width: {max: 320},
+							height: {max: 240}, 
+							frameRate: {max:5}}
+			break;
+		case 'vga':
+			video_params = {width: {max: 1280},
+							height: {max: 720}, 
+							frameRate: {max:30}}
+			break;
+		default:
+			video_params = true
+	}
+	
+	return out_params
+}
+
+
+
+var got_stream = (videoElement) => (stream) => {
+	window.stream = stream; // make stream available to console
+	var sets = stream.getTracks()[0].getSettings()
+	modify_video_containers_size(sets.height,sets.width)
+	videoElement.srcObject = stream;
+	
+	var $canvas = $('canvas');
+	var ctx = $canvas.get(0).getContext('2d');
+	
+	timer = setInterval(()=>{
+			ctx.drawImage(videoElement,0,0,640,480)
+			var data = $canvas.get(0).toDataURL('image/jpeg', 1.0)
+			var blob = dataURLToBlob(data)
+			socket.emit('image_event',{data: blob})
+		},250)	
+	timer()
+}
+
+var get_stream = () => {
+	
+	const videoElement = document.querySelector('video');
+	// stop all possible tracks in saved window.stream
+	if (window.stream) {
+		window.stream.getTracks().forEach(track => track.stop() );
+	}
+	
+	navigator.mediaDevices.getUserMedia(getContraints())
+		.then(got_stream(videoElement)).catch(handleError);
+}
+
+
+var handleError = (error) => {
+	console.error('Error: ', error);
+}
+
+var main = ()=>{
+	createQualitySelector();
+		
+	navigator.mediaDevices.enumerateDevices()
+		.then(createVideoSelector).then(()=>{
+			apply_actions_to_elements()
+			get_stream()
+		})
+	
+	
+}
+
+main()
+
+
+</script>
+<script type="text/javascript">
+// web socket
+namespace = '/test';
+// Connect to the Socket.IO server.
+// The connection URL has the following format:
+//     http[s]://<domain>:<port>[/<namespace>]
+var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace);
+// Event handler for new connections.
+// The callback function is invoked when a connection with the
+// server is established.
+socket.on('connect', function() {
+	console.log('send request');
+	socket.emit('my_event', {data: 'I\'m connected!'});
+});
+// Event handler for server sent data.
+// The callback function is invoked whenever the server emits data
+// to the client. The data is then displayed in the "Received"
+// section of the page.
+socket.on('video_response', function(msg) {
+	//console.log('response',msg.data);
+	var iter = 0;	
+	msg.data.forEach(codes=>{
+		if (iter % 10 == 0){
+			Object.keys(codes).forEach(key=>{
+				//console.log('codes',codes[key].poly.map((item)=> item.join(',')).join(' '))
+				draw_frame(codes[0].poly.map((item)=> item.join(',')).join(' '))		
+			})
+		}
+		iter++;		
+	})
+		
+});
+
+socket.on('my_response', function(msg) {
+	console.log("response :"+msg.data);
+});
+
+function draw_frame(points){
+	var $polygon = $('svg polygon#frame')
+	//console.log('points',points)
+	$polygon.attr('points',points)
+	$polygon.attr('style','fill:none;stroke:purple;stroke-width:4;z-index:40')
+	
+	setTimeout(()=>$polygon.attr('points',''),2000)
+}
+
+</script>
+
+</body>
+
+
+</html>

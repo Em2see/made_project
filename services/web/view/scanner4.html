@@ -1,0 +1,129 @@
+<html>
+<head>
+<style>
+.canvas {
+	position:absolute;
+	top:0;
+	left:0;
+	z-index:10;	
+}
+.video{
+	width: auto;
+	height: auto;
+	position: absolute;
+	top:0;
+	left:0;
+}
+#container{
+	margin: 0 auto;
+	position: relative;
+}
+</style>
+
+<script
+  src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
+  integrity="sha256-4+XzXVhsDmqanXGHaHvgh1gMQKX40OUvDEBTu8JcmNs="
+  crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.5/socket.io.min.js"></script>
+<script type="text/javascript" src="scripts/add_functions.js"></script>
+<!-- TODO
+++++++++++++++++++++++++++++++++
+1. We need to add checking of supported constarints.
+2. 
+++++++++++++++++++++++++++++++++
+-->
+</head>
+<body>
+
+<br/>
+<br/>
+<!--
+<svg width="120" height="120"
+     viewBox="0 0 120 120"
+     xmlns="http://www.w3.org/2000/svg">
+	<rect x="10" y="10" width="100" height="100"/>
+</svg>-->
+<div id='container'>
+<video class='video' id="video1" height="480" width="640" autoplay></video>
+<canvas height="480" width="640" id='canvas' style="display:inline;hidden:true;"></canvas>
+	<svg id='cv1' class='canvas' height="480" width="640" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480">
+		<polygon id="frame" points="200,10 250,190 160,210 100,20" style="fill:none;stroke:none;stroke-width:1"/>
+	</svg>
+
+</div>
+
+<select id="resolution">
+	<option value='std'>Just Video</option>
+	<option value='hd'>High Defenition</option>
+	<option value='vga' selected>VGA quality</option>
+</select>
+
+<select id="videoSource"></select>
+
+
+<button id='start-btn'>Record screen!</button>
+<button id='stop-btn'>Stop screen!</button>
+<div id="div"></div><br>
+
+<a id="link"></a>
+
+<!-- <input type="file" accept="image/*" capture="camera" /> -->
+<p id='logline'></p>
+<script>
+
+
+var constraints = { video: {
+      video: {width: {max: 320}, height: {max: 240}},
+      
+    },frameRate: {max:10}}
+
+var buffer_size_ms = 500
+
+
+var timer;
+
+var start = () => navigator.mediaDevices.getUserMedia(constraints)
+	.then(stream => {
+		
+		var video = document.getElementById('video1');		
+		video.srcObject = stream
+		var $canvas = $('canvas');
+		var ctx = $canvas.get(0).getContext('2d');
+		
+		timer = setInterval(()=>{
+				ctx.drawImage(video,0,0,640,480)
+				var data = $canvas.get(0).toDataURL('image/jpeg', 1.0)
+				var blob = dataURLToBlob(data)
+				socket.emit('image_event',{data: blob})
+			},250)	
+		timer()
+  }).catch(log);
+
+
+
+var stop = stream => stream.getTracks().forEach(track => track.stop());
+var wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+var log = msg => $('#logline').html(msg);
+
+$('#start-btn').on('click',()=>{
+	log('Start recording')
+	rec_stopped = false
+	start()
+})
+
+$('#stop-btn').on('click',()=>{
+	rec_stopped = true
+	log('Stoped')
+})
+
+</script>
+<!--
+<a href="mailto:manish@simplygraphix.com?subject=Feedback for 
+webdevelopersnotes.com&body=The Tips and Tricks section is great
+&cc=anotheremailaddress@anotherdomain.com
+&bcc=onemore@anotherdomain.com">Send me an email</a>
+-->
+</body>
+
+
+</html>

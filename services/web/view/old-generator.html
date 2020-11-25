@@ -1,0 +1,223 @@
+<html>
+<head>
+<script type="text/javascript" src="scripts/jquery.min.js"></script>
+<!-- Get from https://github.com/davidshimjs/qrcodejs -->
+<script type="text/javascript" src="scripts/qrcode.js"></script>
+<link rel="stylesheet" type="text/css" href="semantic/dist/semantic.min.css">
+<script src="semantic/dist/semantic.min.js"></script>
+<script src="https://printjs-4de6.kxcdn.com/print.min.js"></script>
+<link rel="stylesheet" type="text/css" href="https://printjs-4de6.kxcdn.com/print.min.css">
+</head>
+<body>
+<div class="ui segment">
+	<div class="ui input">
+		<input type="text" id="urltext" placeholder="Your link" value="http://verizon.com/">
+	</div>
+	<br>
+	<br>
+
+	<div class="ui floating dropdown button" id="size-select">
+		<span class="text">Size</span>
+		<div class="menu">
+			<div class="item" data-value="80">
+				<i class="small circle icon"></i>
+				Tiny
+			</div>
+			<div class="item" data-value="200">
+				<i class="circle icon"></i>
+				Small
+			</div>
+			<div class="item" data-value="275">
+				<i class="large circle icon"></i>
+				Medium
+			</div>
+			<div class="item" data-value="350">
+				<i class="big circle icon"></i>
+				Big
+			</div>
+		</div>
+	</div>
+	<div class="ui floating dropdown button" id="color-select">
+		<span class="text">Color</span>
+		<div class="menu">
+			<div class="item" data-value="#000000">
+				<i class="circle icon"></i>
+				Black
+			</div>
+			<div class="item" data-value="#DC143C">
+				<i class="circle red icon"></i>
+				Red
+			</div>
+			<div class="item" data-value="#0000CD">
+				<i class="circle blue icon"></i>
+				Blue
+			</div>
+		</div>
+	</div>
+
+
+<div class="content" id="content">
+	<div id="qrcode"></div>
+</div>
+	<br>
+
+	<div class="ui button">
+		<a class="ui basic red" id="save">
+			Save
+		</a>
+	</div>
+  
+	<button class="ui button">
+		<a class="ui basic red" id="send">
+			Send
+		</a>
+	</button>
+  
+  <button class="ui button" id="button" onclick="printJS({ printable: 
+        'content',type: 'html',showModal:true, printContainer: 
+        true,copyTagClasses: true})">
+      Print
+  </button>
+
+  
+  <div class="ui inverted dimmer">
+    <div class="ui text loader">Loading</div>
+  </div>
+  <p></p>
+  <p></p>
+  
+  
+  
+</div>
+
+<script type="text/javascript">
+var qrcode
+
+function init(){
+	//init dropdown 
+	$('.ui.dropdown')
+	  .dropdown()
+	;
+	$('#color-select').dropdown('set selected', "#000000");
+	$('#size-select').dropdown('set selected', "200");
+	
+	//$('#size-select2').dropdown('set selected', "200");
+	
+	$('a#save').attr('download','qr_code.png')
+	
+	$('a#send').attr('download','email.eml')
+	$('.ui.button').addClass('disabled')
+	$('.ui .dimmer').dimmer('show');
+}
+
+var makeTextFile = function (text) {
+	var textFile
+	var data = new Blob([text], {type: 'text/plain'});
+	if (textFile !== null) {
+		window.URL.revokeObjectURL(textFile);
+	}
+	textFile = window.URL.createObjectURL(data);
+	return textFile;
+};
+
+function makeCode () {		
+	var elText = document.getElementById("urltext");
+	
+	if (!elText.value) {
+		alert("Input a text");
+		elText.focus();
+		return;
+	}
+	
+	$('.ui.button').addClass('disabled')
+	$('.ui .dimmer').dimmer('show');
+	let size = $("#size-select").dropdown('get value');
+	let color = $("#color-select").dropdown('get value');
+	let options = {
+		width : size,
+		height : size,
+		colorDark: color
+	}
+	
+	$('div#qrcode').attr('style',"width:"+size+"px; height:"+size+"px; margin-top:15px;")
+	
+	if (qrcode !== undefined){
+		$("#qrcode").empty()
+	}
+	qrcode = new QRCode(document.getElementById("qrcode"), options);
+		
+	qrcode.makeCode(elText.value);
+	
+	setTimeout(()=>{
+		var img_src = $('#qrcode img').attr('src')
+		//console.log(img_src)
+		$('a#save').attr('href',img_src)
+		var email_body = '\
+To: \n\
+Subject: Qr code\n\
+X-Unsent: 1\n\
+Content-Type: multipart/related;\n\
+ boundary="multipart_related_boundary"\n\
+\n\
+This is a multipart message in MIME format.\n\
+--multipart_related_boundary\n\
+Content-Type: text/html; charset=UTF-8;\n\
+Content-Transfer-Encoding: 7bit\n\
+\n\
+<html>\n\
+<body>\n\
+<div>\n\
+<label>#qr_label#</label><br><br>\n\
+<img width="200" height="200" alt="Scan me!" style="display: block;" src="cid:qr">\n\
+</div>\n\
+</body>\n\
+</html>\n\
+\n\
+--multipart_related_boundary\n\
+Content-Type: image/png; name="qr.png"\n\
+Content-Transfer-Encoding: base64\n\
+Content-ID: <qr>\n\
+Content-Disposition: inline; filename="qr.png"\n\
+\n\
+#img_src#\n\
+'
+		email_body = email_body.replace('#img_src#',img_src.replace(/^data:image\/png;base64,/g,''))
+								.replace('#qr_label#',elText.value)
+		$('a#send').attr('style','display: block;')
+		$('a#send').attr('alt','Scan me!')
+		$('a#send').attr('href',makeTextFile(email_body))
+		
+		$('.ui.button').removeClass('disabled')
+		$('.ui .dimmer').dimmer('hide');
+	},2500)
+	
+
+	
+}
+init()
+makeCode();
+
+$("#text").
+	on("blur", function () {
+		makeCode();
+	}).
+	on("keydown", function (e) {
+		if (e.keyCode == 13) {
+			makeCode();
+		}
+	});
+
+$('.ui.dropdown').dropdown({
+	onChange: function(val) {
+		makeCode()
+	}
+});
+	
+
+</script>
+
+
+</body>
+
+
+</html>

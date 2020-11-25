@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  web:
+    build:
+      context: ./services/web
+      dockerfile: Dockerfile
+    command: gunicorn --worker-class eventlet --bind 0.0.0.0:5000 manage:app
+    expose:
+      - 5000
+  nginx:
+    build: ./services/nginx
+    ports:
+      - target: 80 
+        published: 8080
+        protocol: tcp
+        mode: host 
+    depends_on:
+      - web

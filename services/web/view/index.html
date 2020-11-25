@@ -1,0 +1,57 @@
+<html>
+<head>
+	<!-- inject:head:js -->
+	<!-- endinject -->
+	<!-- inject:head:css -->
+	<!-- endinject -->
+</head>
+<body>
+<div class="ui segment">
+	<div class="ui input">
+		<input type="text" id="urltext" placeholder="Your link" value="http://verizon.com/">
+	</div>
+	<br>
+	<br>
+	<div class="ui floating dropdown button" id="size-select">
+		<span class="text">Size</span>
+		<div class="menu">
+		</div>
+	</div>
+	<div class="ui floating dropdown button" id="color-select">
+		<span class="text">Color</span>
+		<div class="menu">
+		</div>
+	</div>
+	<div class="content" id="content">
+		<div id="qrcode"></div>
+	</div>
+	<br>
+
+	<div class="ui button">
+		<a class="ui basic red" id="save_btn">Save</a>
+	</div>
+  
+	<button class="ui button">
+		<a class="ui basic red" id="send_btn">Send</a>
+	</button>
+  
+	<button class="ui button" id="print_btn">Print</button>
+
+  
+  <div class="ui inverted dimmer">
+    <div class="ui text loader">Loading</div>
+  </div>
+  <p></p>
+  <p></p>
+  
+  
+  
+</div>
+
+	<!-- inject:body:js -->
+	<!-- endinject -->
+
+</body>
+
+
+</html>
