@@ -2,7 +2,6 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from tqdm.notebook import tqdm
 import statsmodels.api as sm
 
 from scipy import stats
@@ -22,7 +21,7 @@ class Model():
         data_path = os.path.join(def_path, "data")
         self.paths = {
             "default": def_path,
-            "data": data_path
+            "data": data_path,
             "params": os.path.join(data_path, "listofparams.npy")
         }
         
@@ -31,7 +30,7 @@ class Model():
         idx = train_df.groupby('ID').size()[train_df.groupby('ID').size()==305].index.values
         self.listofparams = []
 
-        for cell in tqdm(idx):
+        for cell in idx:
             # формируем временной ряд для конкретной соты
             data = pd.DataFrame(train_df[(train_df['ID'] == cell)][['date_', 'spd']].sort_values('date_'))
             data['date'] =  pd.to_datetime(data['date_'], format='%Y-%m-%d')
@@ -74,7 +73,7 @@ class Model():
         
         self.train_df = train_df.copy(deep=True)
         
-    def load_params(self, train_df: ):
+    def load_params(self, train_df: pd.DataFrame):
         self.train_df = train_df.copy(deep=True)
         self.listofparams = np.load(self.paths['params'], allow_pickle=True)
             
@@ -88,7 +87,7 @@ class Model():
         celldict = {}
         validtest = test_df.groupby('ID').size()[test_df.groupby('ID').size()==120].index.values
 
-        for i in tqdm(range(len(listofparams))):
+        for i in range(len(listofparams)):
             cell, params = self.listofparams[i]
             
             if cell not in validtest:
@@ -127,7 +126,7 @@ class Model():
 
         celldict90 = dict()
 
-        for cell in tqdm(train_df['ID'].unique()):
+        for cell in train_df['ID'].unique():
             celldict90[cell] = train_df[(train_df['date_'] >= '2016-08-01')&(train_df['ID']==cell)]['spd'].mean()
             
         return celldict90

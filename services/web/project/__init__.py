@@ -6,6 +6,7 @@ from copy import copy
 from .getter import getter
 from .viewer import viewer
 from .db import close_db
+from .runner import runner
 import logging
 
 def_path = os.path.abspath("./")
@@ -35,6 +36,7 @@ app.config['PATHS'] = {
 
 app.register_blueprint(getter)
 app.register_blueprint(viewer)
+app.register_blueprint(runner)
 
 @app.teardown_appcontext
 def teardown_df(exception):

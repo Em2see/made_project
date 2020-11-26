@@ -1,4 +1,4 @@
-from pandas import pd
+import pandas as pd
 
 
 class Model:

@@ -11,3 +11,7 @@ eventlet
 #torchvision==0.3.0
 psycopg2
 pandas
+matplotlib
+statsmodels
+scipy
+xgboost
