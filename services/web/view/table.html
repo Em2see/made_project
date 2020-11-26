@@ -116,7 +116,7 @@
 			$('button#recalc').click(function(){
 				$.ajax({
 					type: "GET",
-					url: "{{ url_for('run_calcs') }}",
+					url: "{{ url_for('viewer.run_calcs') }}",
 					success: function(data)
 					{
 					   location.reload();
@@ -136,7 +136,7 @@
 				var data = objSerializer(form.serializeArray())
 				$.ajax({
 					type: "POST",
-					url: "{{ url_for('addNewPoint') }}",
+					url: "{{ url_for('viewer.addNewPoint') }}",
 					dataType: 'json',
 					contentType: 'application/json',
 					data: JSON.stringify(data),

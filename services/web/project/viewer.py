@@ -6,7 +6,8 @@ import uuid
 
 viewer = Blueprint('viewer', __name__, template_folder='../view')
 viewer.config = {}
-paths = {}
+viewer.logger = None
+viewer.paths = {}
 
 defaults = {
     "radius": 300,
@@ -19,7 +20,8 @@ def record_params(setup_state):
   app = setup_state.app
   viewer.config = {key:value for key,value in app.config.items()}
   app.logger.info(str(viewer.config))
-  paths = viewer.config['PATHS']
+  viewer.logger = app.logger
+  viewer.paths = viewer.config['PATHS']
 
 @viewer.route('/', methods=['GET'])
 def index():
@@ -31,21 +33,21 @@ def table():
 
 @viewer.route('/static/<filename>', methods=['GET'])
 def staticfile(filename):
-    return send_file(os.path.join(paths['static_path'], filename))
+    return send_file(os.path.join(viewer.paths['static_path'], filename))
     
 @viewer.route('/static/themes/default/assets/fonts/<filename>', methods=['GET'])
 def fonts(filename):
-    return send_file(os.path.join(paths['fonts_path'], filename))
+    return send_file(os.path.join(viewer.paths['fonts_path'], filename))
     
 @viewer.route('/static/images/<filename>', methods=['GET'])
 def images(filename):
-    app.logger.info("images %s" % str(defaults))
-    return send_file(os.path.join(paths['images_path'], filename))
+    viewer.logger.info("images %s" % str(defaults))
+    return send_file(os.path.join(viewer.paths['images_path'], filename))
     
 @viewer.route('/view/<path:filename>', methods=['GET'])
 def pages(filename):
-    app.logger.info("view %s" % filename)
-    return send_file(os.path.join(paths['view_path'], filename))
+    viewer.logger.info("view %s" % filename)
+    return send_file(os.path.join(viewer.paths['view_path'], filename))
 
 @viewer.route('/update_params', methods=['POST'])
 def update_params():
@@ -57,7 +59,7 @@ def update_params():
 @viewer.route('/table/add', methods=['POST'])
 def addNewPoint():
     point = request.get_json()
-    app.logger.info("view %s" % str(point))
+    viewer.logger.info("view %s" % str(point))
     id_ = uuid.uuid4()
     points.loc[id_] = pd.Series(point)
     return make_response(jsonify({"id": id_}), 200)
