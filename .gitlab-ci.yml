@@ -1,14 +1,7 @@
-variables:
-    GIT_SSL_NO_VERIFY: "true"
-
 stages:
-    build_simple_model
+  - build_simple_model
 
 build_simple_model:
-    stage: build_simple_model
-    tags:
-    - capex
-    script:
-        - pwd
-        - cd models
-        - pwd
+  stage: build_simple_model
+  script:
+    - pwd
