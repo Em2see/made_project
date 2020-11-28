@@ -5,7 +5,7 @@ services:
     build:
       context: ./services/web
       dockerfile: Dockerfile
-    command: gunicorn --worker-class eventlet --bind 0.0.0.0:5000 manage:app
+    command: gunicorn --worker-class eventlet --reload --bind 0.0.0.0:5000 manage:app
     volumes:
       - ./models:/models
       - ./services/web:/app
@@ -14,9 +14,6 @@ services:
   nginx:
     build: ./services/nginx
     ports:
-      - target: 80 
-        published: 8880
-        protocol: tcp
-        mode: host 
+      - 18000:80
     depends_on:
       - web

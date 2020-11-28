@@ -7,6 +7,7 @@
 	</link>
 	<script src="{{ url_for('viewer.staticfile', filename='semantic.min.js') }}">
 	</script>
+	{% block header %}{% endblock %}
 </head>
 <body>
 	<div class="ui secondary pointing menu">
@@ -14,13 +15,21 @@
 			<!-- <img src="{{ url_for('static', filename='imgs/logo.png') }}"> -->
 			<i class="podcast icon big"></i>
 		</div>
-		<a class="{{ ('active ' if request.url_rule.endpoint == 'index' else '') + 'item' }}"
+		<a class="{{ ('active ' if request.url_rule.endpoint == 'viewer.index' else '') + 'item' }}"
 			href="{{url_for('viewer.index')}}">
 			Visualization
 		</a>
-		<a class="{{ ('active ' if request.url_rule.endpoint == 'table' else '') + 'item' }}"
+		<a class="{{ ('active ' if request.url_rule.endpoint == 'viewer.table' else '') + 'item' }}"
 			href="{{url_for('viewer.table')}}">
 			Add Points
+		</a>
+		<a class="{{ ('active ' if request.url_rule.endpoint == 'viewer.models_info' else '') + 'item' }}"
+			href="{{url_for('viewer.models_info')}}">
+			Models Info
+		</a>
+		<a class="{{ ('active ' if request.url_rule.endpoint == 'viewer.models_status' else '') + 'item' }}"
+			href="{{url_for('viewer.models_status')}}">
+			Models Status
 		</a>
 	</div>
 	<div class="ui segment">

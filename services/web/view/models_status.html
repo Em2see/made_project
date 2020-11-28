@@ -1,0 +1,82 @@
+{% extends 'index.html' %}
+{% block header %}
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+{% endblock %}
+{% block content %}
+	<h1>Models Status</h1>
+	<div class="ui segment">
+		<p>
+			<div id="visualization"></div>
+			<br/>
+			
+				<button class="ui button">Train All</button>
+				<button class="ui button">Predict All</button>
+				<div class="ui toggle checkbox">
+					<input type="checkbox" name="gift" tabindex="0" class="hidden">
+					<label>Predict for added points</label>
+				</div>
+			
+		</p>
+	</div>
+	
+	
+
+	<table class="ui celled table">
+		<thead><tr>
+		<th>Model Name</th>
+		<th></th>
+		<th>Train StartTime</th>
+		<th>Train StopTime</th>
+		<th></th>
+		<th>Predict StartTime</th>
+		<th>Predict StopTime</th>
+		</tr></thead>
+		<tbody>
+			{% for key, value in models_info.items() %}
+			<tr>
+				<td>{{ value[0] }}</td>
+				<td>
+					<button class="ui icon button">
+						<i class="sitemap blue icon"></i>
+						Train
+					</button>
+				</td>
+				<td>28 Nov 2020 12:00</td>
+				<td>28 Nov 2020 12:05</td>
+				<td>
+					<button class="ui icon button">
+						<i class="blind blue icon"></i>
+						Predict
+					</button>
+				</td>
+				<td>28 Nov 2020 12:00</td>
+				<td>28 Nov 2020 12:05</td>
+			</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+	<script>
+		// create some items
+		// note that months are zero-based in the JavaScript Date object, so month 4 is May
+		var items = new vis.DataSet([
+			{'start': new Date(2021, 2, 1), 'end':new Date(2021, 2, 28), 'content': 'Predict period'}
+		]);
+
+		// create visualization
+		var container = document.getElementById('visualization');
+		var options = {
+			height: '120px',
+			min: new Date(2020, 11, 28),                // lower limit of visible range
+			max: new Date(2021, 3, 1),                // upper limit of visible range
+			zoomMin: 1000 * 60 * 60 * 24,             // one day in milliseconds
+			zoomMax: 1000 * 60 * 60 * 24 * 31 * 3     // about three months in milliseconds
+		};
+
+		// create the timeline
+		var timeline = new vis.Timeline(container);
+		timeline.setOptions(options);
+		timeline.setItems(items);
+	</script>
+	
+{% endblock %}

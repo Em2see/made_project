@@ -1,0 +1,11 @@
+{% extends 'index.html' %}
+
+{% block content %}
+	<h1 class="ui header">Информация о моделях</h1>
+	{% for key, value in models_info.items() %}
+		<div class="ui segment">
+			<h2 class="ui header">{{ value[0] }}</h1>
+			<p>{{ value[1]|safe }}</p>
+	  	</div>
+	{% endfor %}
+{% endblock %}

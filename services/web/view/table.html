@@ -1,7 +1,7 @@
 {% extends 'index.html' %}
 
 {% block content %}
-	{% if (points.shape[0] > 0) %}
+	{% if (len(points) > 0) %}
 		<!-- Modal -->
 		<div class="ui modal">
 			<i class="close icon"></i>
@@ -90,29 +90,30 @@
 		<table class="ui celled table">
 			<thead><tr>
 			<th/>
-			{% for name in points.columns.values %}
+			{% for name in column_names %}
 				<th>{{ name }}</th>
 			{% endfor %}
 			</tr></thead>
 			<tbody>
-				{% for id_, point in points.iterrows() %}
+				{% for point in points %}
 				<tr>
 					<td>
 						<button class="ui icon button">
 							<i class="trash red icon"></i>
 						</button>
 					</td>
-					{% for col in points.columns.values %}
-						<td data-label="{{ col }}">{{ point[col] }}</td>
+					{% for val in point[1:] %}
+						<td >{{ val }}</td>
 					{% endfor %}
 				</tr>
 				{% endfor %}
 			</tbody>
 		</table>
 		<script language="javascript">
-			$('.ui.dropdown')
-			  .dropdown()
-			;
+			$('.ui.dropdown').dropdown();
+			$('select[name="tech"]').change(function(event){
+				$('input[name="cap"]').val({'2': 13.0, '4': 3.25, '5':3.25, '9': 6.5}[event.value])
+			})
 			$('button#recalc').click(function(){
 				$.ajax({
 					type: "GET",

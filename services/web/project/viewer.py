@@ -1,6 +1,7 @@
 from flask import Blueprint, url_for, make_response, send_from_directory
 from flask import jsonify, send_file, request, g, render_template, current_app
 from .db import get_db
+from .models import get_models_info
 import os
 import uuid
 
@@ -13,6 +14,17 @@ defaults = {
     "radius": 300,
     "size": 50,
     "tech": 5
+}
+
+pointColumns = {
+    'x': "X",
+    'y': "Y",
+    'tech': "Technology",
+    'cap': "Capacity",
+    'height': "Height",
+    'azimuth': "Azimuth",
+    'date_start': "Start Date",
+    'date_end': "End Date"
 }
 
 @viewer.record
@@ -29,7 +41,24 @@ def index():
     
 @viewer.route('/table', methods=['GET'])
 def table():
-    return render_template('table.html', points=points)
+    cursor = get_db().cursor()
+    sql_select_query = """SELECT * FROM points"""
+    cursor.execute(sql_select_query)
+    points = cursor.fetchall()
+    col_names = [pointColumns[desc[0]] for desc in cursor.description if desc[0] not in ['id']]
+
+    return render_template('table.html', points=points, col_names=col_names)
+
+@viewer.route('/models_info', methods=['GET'])
+def models_info():
+    models_info = get_models_info()
+    return render_template('models_info.html', models_info=models_info)
+
+@viewer.route('/models_status', methods=['GET'])
+def models_status():
+    models_info = get_models_info()
+    
+    return render_template('models_status.html', models_info=models_info)
 
 @viewer.route('/static/<filename>', methods=['GET'])
 def staticfile(filename):
@@ -76,8 +105,11 @@ def removePoint(point_id):
 
 @viewer.route('/table/get', methods=['GET'])
 def getAllAddedPoints():
-    res = points.reset_index().to_json(orient='records')
-    return make_response(res, 200)
+    cursor = get_db().cursor()
+    sql_select_query = """SELECT * FROM points"""
+    cursor.execute(sql_select_query)
+    records = cursor.fetchall()
+    return make_response(jsonify(records), 200)
 
 @viewer.route('/vis/antenna', methods=['GET'])
 def getAntennaDiagram():

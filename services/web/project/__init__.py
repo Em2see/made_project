@@ -21,7 +21,7 @@ app.config['SECRET_KEY'] = 'secret!'
 app.config['DATABASE'] = {
     'user': "smartcapex",
     'password': "1234",
-    'host': "172.19.0.1",
+    'host': "34.105.239.93",
     'port': "5432",
     'database': "smartcapex"
 }

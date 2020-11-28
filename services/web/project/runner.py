@@ -1,24 +1,17 @@
 from flask import Blueprint, request, jsonify, make_response
 import psycopg2
 import pandas as pd
-import datetime
+from datetime import datetime
 from .db import get_db
-import sys
-import os
+from .models import get_models, models_info
 
 runner = Blueprint('runner', __name__)
 
-models_path = os.path.abspath("/")
-if models_path not in sys.path:
-    sys.path.append(models_path)
-    from models import ARMA_model, Boosting_model, Linear_model
-    from models import models_info
-
-@runner.route('/model/<model_id>/status', methods=['GET'])
-def model_status(model_id):
+@runner.route('/model/<model_name>/status', methods=['GET'])
+def model_status(model_name):
     cursor = get_db().cursor()
-    sql_select_query = """select * from models_run where id = %s"""
-    cursor.execute(sql_select_query, (model_id, ))
+    sql_select_query = "SELECT * FROM train_runs WHERE name = '{:s}'".format(model_name)
+    cursor.execute(sql_select_query)
     record = cursor.fetchall()
     if len(record) == 0:
         return jsonify({}), 404
@@ -30,29 +23,61 @@ def model_info(model_name):
         return jsonify({}), 404
     return jsonify({"header": models_info[model_name][0], "info": models_info[model_name][1]}), 200
 
-def get_train_df():
+@runner.route('/model/<model_name>/train', methods=['GET'])
+def model_train(model_name):
+    models = get_models()
+    # creating train_df
+    train_df = getDF("train")
+    setStartModel(model_name, "train")
+    models[model_name].fit(train_df)
+    setStopModel(model_name, "train")
+
+@runner.route('/model/<model_name>/test', methods=['GET'])
+def model_test(model_name):
+    models = get_models()
+    # creating train_df
+    test_df = getDF("test")
+    setStartModel(model_name, "test")
+    result_df = models[model_name].predict(test_df)
+    setStopModel(model_name, "test")
+
+def getDF(tableName):
+    if (tableName == 'test'):
+        # here we need to join point table to test table
+        sql_select_query = "SELECT * FROM test"
+    else:
+        sql_select_query = "SELECT * FROM train"
     cursor = get_db().cursor()
-    sql_select_query = """select * from train"""
     cursor.execute(sql_select_query)
     records = cursor.fetchall()
-    if len(records) == 0:
-        pass
-    df = pd.DataFrame(records)
+    df = pd.DataFrame(records, columns = [val[0] for val in cursor.details])
+    
     return df
-
-
-@runner.route('/model/<model_name>/run', methods=['GET'])
-def model_run(model_name):
-    models = {
-        "arma": ARMA_model,
-        "boosting": Boosting_model,
-        "linear": Linear_model
-    }
-    Model = models[model_name]
-    train_df = get_train_df()
-    model = Model()
-    model.train(train_df)
+    
+def setStartModel(modelName, tableName="train"):
+    cursor = get_db().cursor()
+    sql_select_query = "INSERT INTO {:s}_runs (pid, model, start, stop) ".format(tableName, "0")
+    dt_now = datetime.now().strftime("%d/%m/%y %hh:%mm")
+    sql_select_query += " VALUES ({:d}, '{:s}', '{:s}', NULL)".format(0, modelName, dt_now)
+    cursor.execute(sql_select_query)
+    
+def setStopModel(modelName, tableName="train"):
+    cursor = get_db().cursor()
+    sql_select_query = "UPDATE {:s}_runs SET stop = '{:s}' WHERE model = '{:s}'"
+    dt_now = datetime.now().strftime("%d/%m/%y %hh:%mm")
+    sql_select_query = sql_select_query.format(tableName, dt_now, modelName)
+    cursor.execute(sql_select_query)
 
 @runner.route('/model/run_all', methods=['GET'])
-def model_run_all():
+def model_train_all():
+    models = get_models()
+    # creating train_df
+    train_df = getDF("train")
+
+    #train all models
+    for model_name, model in models.items():
+        setStartModel(model_name, "train")
+        model.fit(train_df)
+        setStopModel(model_name, "train")
+
     return jsonify({}), 200
