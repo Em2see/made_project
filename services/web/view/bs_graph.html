@@ -1,0 +1,209 @@
+{% extends 'index.html' %}
+{% block header %}
+	<style> /* set the CSS */
+		/*body { font: 12px Arial;}*/
+		path { 
+			stroke: steelblue;
+			stroke-width: 2;
+			fill: none;
+		}
+		.axis path,
+		.axis line {
+			fill: none;
+			stroke: grey;
+			stroke-width: 1;
+			shape-rendering: crispEdges;
+		}
+		.red_line {
+			fill: none;
+			stroke: red;
+			stroke-width: 2;
+		}
+	</style>
+	<!-- load the d3.js library -->    
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/6.2.0/d3.min.js"></script>
+	<script src="https://d3js.org/d3-time.v2.min.js"></script>
+	<script src="https://d3js.org/d3-time-format.v3.min.js"></script>
+	<script src="https://d3js.org/d3-scale.v3.min.js"></script>
+	<script src="https://d3js.org/d3-collection.v1.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+{% endblock %}
+{% block content %}
+	<h1>Base Stations Graph</h1>
+	<div class="ui segment">
+		<p>
+			<div id="visualization"></div>
+		</p>
+	</div>
+	<div class="ui segment">
+		<p>
+			<label>Base station ID</label>
+			<select class="ui fluid search dropdown" multiple="" id="bs_ids">
+				<option value="">Choose BS</option>
+				{% for bs_id in bs_ids %}
+					<option value="{{ bs_id }}">{{ (bs_id|string)[:10] }}</option>
+				{% endfor %}
+			</select>
+			<br/>
+			<label>Models</label>
+			<select class="ui fluid search dropdown" multiple="" id="model">
+				<option value="">Choose Models</option>
+				{% for key, model_name in models_info.items() %}
+					<option value="{{ key }}">{{ model_name[0] }}</option>
+				{% endfor %}
+			</select>
+			<br/>
+			<button class="ui button" id="plot">Plot</button>
+		</p>
+	</div>
+	<div class="ui segment" id="graph_segment">
+		<p>
+			<div id="graph">
+			</div>
+		</p>
+	</div>
+	<script>
+		// create some items
+		// note that months are zero-based in the JavaScript Date object, so month 4 is May
+		var items = new vis.DataSet([
+			{start: new Date(2021, 2, 1), 
+			end: new Date(2021, 2, 28), 
+			content: 'Predict period'}
+		]);
+		
+		// create visualization
+		var container = document.getElementById('visualization');
+		var options = {
+			height: '120px',
+			min: new Date(2020, 11, 28),                // lower limit of visible range
+			max: new Date(2021, 3, 1),                // upper limit of visible range
+			zoomMin: 1000 * 60 * 60 * 24,             // one day in milliseconds
+			zoomMax: 1000 * 60 * 60 * 24 * 31 * 3,     // about three months in milliseconds
+			editable: { 
+				remove: false, 
+				updateTime: true
+			},
+			clickToUse: true,
+			onUpdate: function(item, callback){
+				 console.log(item)
+				 callback(item)
+			}
+		};
+
+		// create the timeline
+		var timeline = new vis.Timeline(container);
+		timeline.setOptions(options);
+		timeline.setItems(items);
+
+		$('.ui.dropdown').dropdown();
+		$('#model').dropdown('set selected', "{{ models_info.keys()|join(',') }}".split(','));
+		
+	</script>
+	<script>
+		//var format = d3.timeFormat("%x");
+		// Set the dimensions of the canvas / graph
+		var margin = {top: 30, right: 50, bottom: 30, left: 50};
+		var width = $('#graph_segment').width() - margin.left - margin.right;
+		var height = 300 - margin.top - margin.bottom;
+		
+		// Parse the date / time
+		var parseDate = d3.timeParse("%V %Y"); 
+		
+		// Set the ranges
+		var x = d3.scaleTime().range([0, width]);
+		var y = d3.scaleLinear().range([height, 0]);
+		
+		// Define the axes
+		var xAxis = d3.axisBottom(x).ticks(20);
+		
+		var yAxis = d3.axisLeft(y).ticks(10);
+		
+		// Define the line
+		var spdLine = d3.line()
+			.x(function(d) { return x(d.date); })
+			.y(function(d) { return y(d.spd); });
+		
+		var xMean = function(values){ d3.mean(values, function(d) { return d.spd; })}
+
+		// Adds the svg canvas
+		var svg = d3.select("div#graph")
+			.append("svg")
+				.attr("width", width + margin.left + margin.right)
+				.attr("height", height + margin.top + margin.bottom)
+			.append("g")
+				.attr("transform", 
+					  "translate(" + margin.left + "," + margin.top + ")");
+		
+		function drawGraph(data) {
+			
+			data.forEach(function(d) {
+				d.tp = d[0]
+				d.date = parseDate(d[2] + ' ' + d[3]);
+				d.spd = d[1];
+			})
+			data = data.sort((a,b) => d3.ascending(a.date, b.date));
+		
+			// Scale the range of the data
+			x.domain(d3.extent(data, function(d) { return d.date; }));
+			y.domain([0, d3.max(data, function(d) { return d.spd; })]); 
+		
+			// Nest the entries by symbol
+			var dataNest = d3.nest()
+				.key(function(d) {return d.tp;})
+				.entries(data);
+		
+			// Loop through each symbol / key
+			dataNest.forEach(function(d) {
+				var path = svg.append("path")
+						.attr("class", "line")
+					
+				if (d.key === 'pred') {
+					path = path.attr("class", "red_line")
+				}
+				console.log(xMean(d.values))
+				path.attr("d", spdLine(d.values)); 
+			});
+		
+			// Add the X Axis
+			svg.append("g")
+				.attr("class", "x axis")
+				.attr("transform", "translate(0," + height + ")")
+				.call(xAxis);
+		
+			// Add the Y Axis
+			svg.append("g")
+				.attr("class", "y axis")
+				.call(yAxis);
+			
+			// text label for the x axis
+			svg.append("text")
+				.attr("x", width / 2 )
+				.attr("y", 0 )
+				.style("text-anchor", "middle")
+				.text("Speed");
+		}
+		
+		
+		</script>
+		<script>
+			$('button#plot').click(function(){
+				var bs_ids = $('#bs_ids').val()
+				var models = $('#model').val()
+				var data = JSON.stringify({ models, bs_ids })
+				$.ajax({
+					url: "{{ url_for('getter.get_bs_data') }}",
+					method: "POST",
+					dataType: 'json',
+					contentType: 'application/json',
+					data: data,
+					success: function (data) {
+						console.log(data)
+						drawGraph(data['items'])
+					}
+				})
+			});
+			
+		</script>
+	
+{% endblock %}

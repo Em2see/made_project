@@ -2,7 +2,8 @@ from flask import Blueprint, request, jsonify, make_response
 import psycopg2
 import pandas as pd
 from datetime import datetime
-from .db import get_db
+from time import sleep
+from .db import get_db, getArray, getDict, update
 from .models import get_models, models_info
 
 runner = Blueprint('runner', __name__)
@@ -29,8 +30,9 @@ def model_train(model_name):
     # creating train_df
     train_df = getDF("train")
     setStartModel(model_name, "train")
-    models[model_name].fit(train_df)
+    #models[model_name].fit(train_df)
     setStopModel(model_name, "train")
+    return jsonify({"shape": train_df.shape}), 200
 
 @runner.route('/model/<model_name>/test', methods=['GET'])
 def model_test(model_name):
@@ -47,26 +49,40 @@ def getDF(tableName):
         sql_select_query = "SELECT * FROM test"
     else:
         sql_select_query = "SELECT * FROM train"
-    cursor = get_db().cursor()
-    cursor.execute(sql_select_query)
-    records = cursor.fetchall()
-    df = pd.DataFrame(records, columns = [val[0] for val in cursor.details])
+    records, cols = getArray(sql_select_query)
+    df = pd.DataFrame(records, columns=cols)
     
     return df
-    
+
+def get_time_now():
+    return datetime.now().strftime("%Y%m%d %H:%M:%S")
+
 def setStartModel(modelName, tableName="train"):
-    cursor = get_db().cursor()
-    sql_select_query = "INSERT INTO {:s}_runs (pid, model, start, stop) ".format(tableName, "0")
-    dt_now = datetime.now().strftime("%d/%m/%y %hh:%mm")
+    sql_select_query = "DELETE FROM {:s}_run WHERE model_name='{:s}'; ".format(tableName,modelName)
+    sql_select_query += "INSERT INTO {:s}_run (pid, model_name, start, stop) ".format(tableName, "0")
+    dt_now = get_time_now()
     sql_select_query += " VALUES ({:d}, '{:s}', '{:s}', NULL)".format(0, modelName, dt_now)
-    cursor.execute(sql_select_query)
+    update(sql_select_query)
     
 def setStopModel(modelName, tableName="train"):
-    cursor = get_db().cursor()
-    sql_select_query = "UPDATE {:s}_runs SET stop = '{:s}' WHERE model = '{:s}'"
-    dt_now = datetime.now().strftime("%d/%m/%y %hh:%mm")
+    sql_select_query = "UPDATE {:s}_run SET stop = '{:s}' WHERE model_name = '{:s}'"
+    dt_now = get_time_now()
     sql_select_query = sql_select_query.format(tableName, dt_now, modelName)
-    cursor.execute(sql_select_query)
+    update(sql_select_query)
+
+@runner.route('/model/predict_all', methods=['GET'])
+def model_predict_all():
+    models = get_models()
+    # creating test_df
+    test_df = getDF("test")
+
+    #train all models
+    for model_name, model in models.items():
+        setStartModel(model_name, "test")
+        model.predict(test_df)
+        setStopModel(model_name, "test")
+
+    return jsonify({}), 200
 
 @runner.route('/model/run_all', methods=['GET'])
 def model_train_all():

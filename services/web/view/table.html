@@ -1,7 +1,7 @@
 {% extends 'index.html' %}
 
 {% block content %}
-	{% if (len(points) > 0) %}
+	{% if (points|length > 0) %}
 		<!-- Modal -->
 		<div class="ui modal">
 			<i class="close icon"></i>
@@ -53,7 +53,7 @@
 					<div class="field">
 						<label>Capacity</label>
 						<div class="fields">
-							<div class="eight wide field">
+							<div class="eight wide field disabled">
 								<input type="text" name="cap" placeholder="Capacity">
 							</div>
 						</div>
@@ -89,7 +89,7 @@
 		<button class="ui primary button" id="recalc">Recalculate</button>
 		<table class="ui celled table">
 			<thead><tr>
-			<th/>
+			<th></th>
 			{% for name in column_names %}
 				<th>{{ name }}</th>
 			{% endfor %}
@@ -111,13 +111,15 @@
 		</table>
 		<script language="javascript">
 			$('.ui.dropdown').dropdown();
+			$('.ui.checkbox').checkbox();
+			
 			$('select[name="tech"]').change(function(event){
-				$('input[name="cap"]').val({'2': 13.0, '4': 3.25, '5':3.25, '9': 6.5}[event.value])
+				$('input[name="cap"]').val({'2': 13.0, '4': 3.25, '5':3.25, '9': 6.5}[event.target.value])
 			})
 			$('button#recalc').click(function(){
 				$.ajax({
 					type: "GET",
-					url: "{{ url_for('viewer.run_calcs') }}",
+					url: "{{ url_for('runner.model_predict_all') }}",
 					success: function(data)
 					{
 					   location.reload();
