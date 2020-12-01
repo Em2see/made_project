@@ -1,13 +1,17 @@
-from .arma import Model as ARMA_model
-from .boosting import Model as Boosting_model
-from .linear import Model as Linear_model
+import os
+from pathlib import Path
+from pkgutil import iter_modules
+from glob import glob
+from importlib import import_module
 
-from .arma import __description__ as ARMA_desc , __html__ as ARMA_html
-from .boosting import __description__ as Boosting_desc , __html__ as Boosting_html
-from .linear import __description__ as Linear_desc , __html__ as Linear_html
+package_dir = Path(__file__).resolve().parent
+models_info = dict()
+models_class = dict()
 
-models_info = {
-    "arma": (ARMA_desc, ARMA_html),
-    "boosting": (Boosting_desc, Boosting_html),
-    "linear": (Linear_desc, Linear_html)
-}
+for (_, module_name, _) in iter_modules([package_dir]):
+    module = import_module(f"{__name__}.{module_name}")
+    models_info[module_name] = [getattr(module,fname) for fname in ['__description__', '__html__']]
+    class_name = module_name[0].upper() + module_name[1:] + "_model"
+    globals()[class_name] = getattr(module, "Model")
+    models_class[module_name] = getattr(module, "Model")
+    
