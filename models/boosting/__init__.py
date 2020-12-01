@@ -1,6 +1,6 @@
-__author__ = 'Egor Obidin'
-__email__ = 'egor.obidin@grr.la'
-__version__ = '0.0.3'
+__author__ = 'Egor Kravchenko'
+__email__ = 'egor.kravchenko@grr.la'
+__version__ = '0.0.4'
 __description__= 'Boosting model'
 __tools__= 'xgboost numpy pandas'
 __html__= """
@@ -9,4 +9,4 @@ __html__= """
 Модель может делать предсказания как для старых вышек, так и для совершенно новых, при этом появление новых вышек повлияет на предсказание соседних вышек.</p>
 """
 
-from .boosting_model_v1 import Model
+from .boosting_model_v2 import Model
