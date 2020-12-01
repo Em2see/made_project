@@ -45,15 +45,15 @@
 			})();return false;">Menu</button>
 		<!--
 		<h2 class="ui header centered">Antennas map</h2>
-		<img class="ui large centered image" id="antennas" src="{{ url_for('viewer.images', filename='antennas_default.png') }}"/>
+		<img class="ui large centered image" id="antennas" src="/static/images/antennas_default.png"/>
 		-->
 		<h2 class="ui header centered">Heat Map</h2>
 			
 		<div class="ui big images">
-			<img class="ui large centered image" id="heatmap" src="{{ url_for('viewer.images', filename='num_cells_heatmap.png') }}"/>
-			<img class="ui large centered image" id="heatmap" src="{{ url_for('viewer.images', filename='spd_heatmap.png') }}"/>
-			<img class="ui large centered image" id="heatmap" src="{{ url_for('viewer.images', filename='subs_heatmap.png') }}"/>
-			<img class="ui large centered image" id="heatmap" src="{{ url_for('viewer.images', filename='trf_heatmap.png') }}"/>
+			<img class="ui large centered image" id="heatmap" src="/static/images/num_cells_heatmap.png"/>
+			<img class="ui large centered image" id="heatmap" src="/static/images/spd_heatmap.png"/>
+			<img class="ui large centered image" id="heatmap" src="/static/images/subs_heatmap.png"/>
+			<img class="ui large centered image" id="heatmap" src="/static/images/trf_heatmap.png"/>
 		</div>
 		
 		<script>
@@ -75,8 +75,8 @@
 							contentType: 'application/json',
 							data: data,
 							success: function (data) {
-								var heatmap_src = "{{ url_for('viewer.images', filename='heatmap_default.png') }}"
-								var antennas_src = "{{ url_for('viewer.images', filename='antennas_default.png') }}"
+								var heatmap_src = "/static/images/heatmap_default.png"
+								var antennas_src = "/static/images/antennas_default.png"
 						
 								$("#heatmap").attr("src", heatmap_src + "?timestamp=" + new Date().getTime());
 								$("#antennas").attr("src", antennas_src + "?timestamp=" + new Date().getTime());

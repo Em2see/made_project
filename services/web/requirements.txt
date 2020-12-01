@@ -1,14 +1,9 @@
 numpy
-Pillow
 flask
-pyzbar
-opencv-python
 flask-socketio
 imutils
 gunicorn
 eventlet
-#torch==1.1.0
-#torchvision==0.3.0
 psycopg2
 pandas
 matplotlib

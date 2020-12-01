@@ -76,18 +76,18 @@ def bs_graph():
 
     return render_template('bs_graph.html', models_info=models_info, bs_ids=bs_ids)
 
-@viewer.route('/static/<filename>', methods=['GET'])
-def staticfile(filename):
-    return send_file(os.path.join(viewer.paths['static_path'], filename))
-    
-@viewer.route('/static/themes/default/assets/fonts/<filename>', methods=['GET'])
-def fonts(filename):
-    return send_file(os.path.join(viewer.paths['fonts_path'], filename))
-    
-@viewer.route('/static/images/<filename>', methods=['GET'])
-def images(filename):
-    viewer.logger.info("images %s" % str(defaults))
-    return send_file(os.path.join(viewer.paths['images_path'], filename))
+# @viewer.route('/static/<filename>', methods=['GET'])
+# def staticfile(filename):
+#     return send_file(os.path.join(viewer.paths['static_path'], filename))
+#     
+# @viewer.route('/static/themes/default/assets/fonts/<filename>', methods=['GET'])
+# def fonts(filename):
+#     return send_file(os.path.join(viewer.paths['fonts_path'], filename))
+#     
+# @viewer.route('/static/images/<filename>', methods=['GET'])
+# def images(filename):
+#     viewer.logger.info("images %s" % str(defaults))
+#     return send_file(os.path.join(viewer.paths['images_path'], filename))
     
 @viewer.route('/view/<path:filename>', methods=['GET'])
 def pages(filename):

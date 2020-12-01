@@ -1,12 +1,8 @@
 import sys
 import os
 from flask import g, current_app
-
-models_path = os.path.abspath("/")
-if models_path not in sys.path:
-    sys.path.append(models_path)
-    from models import ARMA_model, Boosting_model, Linear_model
-    from models import models_info
+from models import ARMA_model, Boosting_model, Linear_model
+from models import models_info
 
 def get_models_info():
     if 'model_info' not in g:

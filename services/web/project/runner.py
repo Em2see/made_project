@@ -1,8 +1,9 @@
-from flask import Blueprint, request, jsonify, make_response
+from flask import Blueprint, request, jsonify, make_response, current_app
 import psycopg2
 import pandas as pd
 from datetime import datetime
 from time import sleep
+import os
 from .db import get_db, getArray, getDict, update
 from .models import get_models, models_info
 
@@ -29,8 +30,9 @@ def model_train(model_name):
     models = get_models()
     # creating train_df
     train_df = getDF("train")
+    train_df.to_csv(os.path.abspath('/models/exec.csv'))
     setStartModel(model_name, "train")
-    #models[model_name].fit(train_df)
+    models[model_name].train(train_df)
     setStopModel(model_name, "train")
     return jsonify({"shape": train_df.shape}), 200
 
@@ -48,7 +50,7 @@ def getDF(tableName):
         # here we need to join point table to test table
         sql_select_query = "SELECT * FROM test"
     else:
-        sql_select_query = "SELECT * FROM train"
+        sql_select_query = "SELECT *  FROM train limit 10000"
     records, cols = getArray(sql_select_query)
     df = pd.DataFrame(records, columns=cols)
     
