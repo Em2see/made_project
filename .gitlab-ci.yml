@@ -1,0 +1,7 @@
+stages:
+  - build_simple_model
+
+build_simple_model:
+  stage: build_simple_model
+  script:
+    - pwd
