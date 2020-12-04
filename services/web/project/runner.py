@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime
 from time import sleep
 import os
-from .db import get_db, getArray, getDict, update
+from .db import get_db, getArray, getDict, update, execMany
 from .models import get_models, models_info
 
 runner = Blueprint('runner', __name__)
@@ -36,13 +36,14 @@ def model_train(model_name):
     setStopModel(model_name, "train")
     return jsonify({"shape": train_df.shape}), 200
 
-@runner.route('/model/<model_name>/test', methods=['GET'])
-def model_test(model_name):
+@runner.route('/model/<model_name>/predict', methods=['GET'])
+def model_predict(model_name):
     models = get_models()
     # creating train_df
     test_df = getDF("test")
     setStartModel(model_name, "test")
     result_df = models[model_name].predict(test_df)
+    writeDF(f"predict_{model_name}", result_df)
     setStopModel(model_name, "test")
 
 def getDF(tableName):
@@ -50,11 +51,19 @@ def getDF(tableName):
         # here we need to join point table to test table
         sql_select_query = "SELECT * FROM test"
     else:
-        sql_select_query = "SELECT *  FROM train limit 10000"
+        sql_select_query = "SELECT *  FROM train"
     records, cols = getArray(sql_select_query)
     df = pd.DataFrame(records, columns=cols)
-    
     return df
+
+def dropAllItems(tableName):
+    update(f"DELETE FROM {tableName}")
+
+def writeDF(tableName, result_df):
+    columns = ['id', 'date_', 'x', 'y', 'tech', 'cap', 'height', 'azimuth', 'spd_pred']
+    sql_query = "INSERT INTO {:s} ({:s}) VALUES %s;".format(tableName, ', '.join([f"{c}" for c in columns]))
+    records = result_df[columns].to_records(index=False)
+    execMany(sql_query, records)
 
 def get_time_now():
     return datetime.now().strftime("%Y%m%d %H:%M:%S")
@@ -81,7 +90,8 @@ def model_predict_all():
     #train all models
     for model_name, model in models.items():
         setStartModel(model_name, "test")
-        model.predict(test_df)
+        result_df = model.predict(test_df)
+        writeDF(f"predict_{model_name}", result_df)
         setStopModel(model_name, "test")
 
     return jsonify({}), 200
@@ -95,7 +105,7 @@ def model_train_all():
     #train all models
     for model_name, model in models.items():
         setStartModel(model_name, "train")
-        model.fit(train_df)
+        model.train(train_df)
         setStopModel(model_name, "train")
 
     return jsonify({}), 200

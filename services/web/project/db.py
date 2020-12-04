@@ -1,11 +1,17 @@
-import psycopg2
+from psycopg2 import connect, execute_values
 from flask import g, current_app
+from sqlalchemy import create_engine, 
 
 def get_db():
     if 'conn' not in g:
-        g.conn = psycopg2.connect(**current_app.config['DATABASE'])
-
+        g.conn = connect(**current_app.config['DATABASE'])
+        g.engine = create_engine(::)
     return g.conn
+    
+def get_db():
+    if 'engine' not in g:
+        g.engine = create_engine(current_app.config['ENGINE'])
+    return g.engine
 
 def getDict(sql_select_query):
     cursor = get_db().cursor()
@@ -32,9 +38,15 @@ def update(sql_select_query):
     current_app.logger.info(sql_select_query)
     cursor.execute(sql_select_query)
     conn.commit()
+    
+def execMany(query, values):
+    conn = get_db()
+    cursor = conn.cursor()
+    current_app.logger.info(query)
+    execute_values(cursor, query, values)
+    conn.commit()
 
 def close_db(e=None):
     conn = g.pop('conn', None)
-
     if conn is not None:
         conn.close()

@@ -9,7 +9,7 @@ from functools import lru_cache
 import xgboost as xgb
 import numpy as np
 import pandas as pd
-from grid import Grid
+from .grid import Grid
 
 
 class Model:

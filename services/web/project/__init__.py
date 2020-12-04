@@ -26,6 +26,8 @@ app.config['DATABASE'] = {
     'database': "smartcapex"
 }
 
+app.config['ENGINE'] = "postgresql+psycopg2://smartcapex:1234@/smartcapex?host=postgres:5432"
+
 app.config['PATHS'] = {
     "def_path": def_path,
     "view_path": os.path.join(def_path, "view"),

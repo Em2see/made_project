@@ -27,12 +27,12 @@ class Model():
         
         
     def train(self, train_df: pd.DataFrame):
-        idx = train_df.groupby('ID').size()[train_df.groupby('ID').size()==305].index.values
+        idx = train_df.groupby('id').size()[train_df.groupby('id').size()==305].index.values
         self.listofparams = []
 
         for cell in idx:
             # формируем временной ряд для конкретной соты
-            data = pd.DataFrame(train_df[(train_df['ID'] == cell)][['date_', 'spd']].sort_values('date_'))
+            data = pd.DataFrame(train_df[(train_df['id'] == cell)][['date_', 'spd']].sort_values('date_'))
             data['date'] =  pd.to_datetime(data['date_'], format='%Y-%m-%d')
             data.drop('date_', axis=1, inplace=True)
             data.set_index('date', inplace=True)
@@ -85,15 +85,15 @@ class Model():
         '''
 
         celldict = {}
-        validtest = test_df.groupby('ID').size()[test_df.groupby('ID').size()==120].index.values
+        validtest = test_df.groupby('id').size()[test_df.groupby('id').size()==120].index.values
 
-        for i in range(len(listofparams)):
+        for i in range(len(self.listofparams)):
             cell, params = self.listofparams[i]
             
             if cell not in validtest:
                 continue
             
-            data = pd.DataFrame(train_df[(train_df['ID'] == cell)][['date_', 'spd']].sort_values('date_'))
+            data = pd.DataFrame(train_df[(train_df['id'] == cell)][['date_', 'spd']].sort_values('date_'))
             data['date'] =  pd.to_datetime(data['date_'], format='%Y-%m-%d')
             data.drop('date_', axis=1, inplace=True)
             data.set_index('date', inplace=True)
@@ -126,8 +126,8 @@ class Model():
 
         celldict90 = dict()
 
-        for cell in train_df['ID'].unique():
-            celldict90[cell] = train_df[(train_df['date_'] >= '2016-08-01')&(train_df['ID']==cell)]['spd'].mean()
+        for cell in train_df['id'].unique():
+            celldict90[cell] = train_df[(train_df['date_'] >= '2016-08-01')&(train_df['id']==cell)]['spd'].mean()
             
         return celldict90
         
@@ -141,9 +141,9 @@ class Model():
         self.precalc_params(test_df)
         
         preds = pd.DataFrame()
-        preds['ID'] = test_df['ID']
+        preds['id'] = test_df['id']
         preds['date_'] = test_df['date_']
-        preds.sort_values(['ID', 'date_'], inplace=True, ascending=True)
+        preds.sort_values(['id', 'date_'], inplace=True, ascending=True)
         
         '''
         Делаем предикт. Если сота есть в словарике ARMA предиктов, то берем результат оттуда.
@@ -153,21 +153,21 @@ class Model():
 
         f = []
 
-        for cell in preds['ID'].unique():
+        for cell in preds['id'].unique():
             if cell in self.celldict:
                 f.extend(self.celldict[cell])
                 continue
             elif cell in self.celldict90:
-                f.extend(test_df[test_df['ID']==cell].shape[0] * [self.celldict90[cell]])
+                f.extend(test_df[test_df['id']==cell].shape[0] * [self.celldict90[cell]])
                 continue
             else:
-                tech = test_df[test_df['ID'] == cell]['tech'].values[0]
-                f.extend(test_df[test_df['ID']==cell].shape[0] * [self.techdict[tech]])
+                tech = test_df[test_df['id'] == cell]['tech'].values[0]
+                f.extend(test_df[test_df['id']==cell].shape[0] * [self.techdict[tech]])
                 
         preds['spd'] = f
         
-        ans = test_df.sort_values(['ID', 'date_'], ascending=True)
-        ans['spd'] = preds['spd']
+        ans = test_df.sort_values(['id', 'date_'], ascending=True)
+        ans['spd_pred'] = preds['spd']
         ans.sort_index(inplace=True)
                 
         return ans
