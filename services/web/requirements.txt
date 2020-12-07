@@ -10,3 +10,8 @@ matplotlib
 statsmodels
 scipy
 xgboost
+sqlalchemy
+sklearn
+celery
+redis
+msgpack

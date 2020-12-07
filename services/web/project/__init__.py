@@ -7,6 +7,7 @@ from .getter import getter
 from .viewer import viewer
 from .db import close_db
 from .runner import runner
+from .tasks import make_celery
 import logging
 
 def_path = os.path.abspath("./")
@@ -36,9 +37,18 @@ app.config['PATHS'] = {
     "fonts_path": os.path.join(view_path, "static", "themes/default/assets/fonts")
 }
 
+app.config['REDIS_MODELS'] = {
+    'host': 'redis_host', 
+    'port': 6379,
+    'db': 1
+}
+
 app.register_blueprint(getter)
 app.register_blueprint(viewer)
 app.register_blueprint(runner)
+
+celery = make_celery(app)
+
 
 @app.teardown_appcontext
 def teardown_df(exception):

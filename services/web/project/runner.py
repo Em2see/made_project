@@ -5,7 +5,7 @@ from datetime import datetime
 from time import sleep
 import os
 from .db import get_db, getArray, getDict, update, execMany
-from .models import get_models, models_info
+from .models import get_models, models_info, get_trained_model, set_trained_model
 
 runner = Blueprint('runner', __name__)
 
@@ -30,21 +30,25 @@ def model_train(model_name):
     models = get_models()
     # creating train_df
     train_df = getDF("train")
-    train_df.to_csv(os.path.abspath('/models/exec.csv'))
+    #train_df.to_csv(os.path.abspath('/models/exec.csv'))
     setStartModel(model_name, "train")
     models[model_name].train(train_df)
+    set_trained_model(model_name, models[model_name])
     setStopModel(model_name, "train")
     return jsonify({"shape": train_df.shape}), 200
 
 @runner.route('/model/<model_name>/predict', methods=['GET'])
 def model_predict(model_name):
-    models = get_models()
     # creating train_df
     test_df = getDF("test")
     setStartModel(model_name, "test")
-    result_df = models[model_name].predict(test_df)
+    model = get_trained_model(model_name)
+    if model is None:
+        return jsonify({"response": "model hasn't been trained"}), 404
+    result_df = model.predict(test_df)
     writeDF(f"predict_{model_name}", result_df)
     setStopModel(model_name, "test")
+    return jsonify({"shape": result_df.shape}), 200
 
 def getDF(tableName):
     if (tableName == 'test'):
@@ -61,7 +65,8 @@ def dropAllItems(tableName):
 
 def writeDF(tableName, result_df):
     columns = ['id', 'date_', 'x', 'y', 'tech', 'cap', 'height', 'azimuth', 'spd_pred']
-    sql_query = "INSERT INTO {:s} ({:s}) VALUES %s;".format(tableName, ', '.join([f"{c}" for c in columns]))
+    sql_query = "INSERT INTO {:s} ({:s}) VALUES %s;".format(tableName, ', '.join(columns))
+    current_app.logger.info(result_df[columns].info())#.pipe(type_pipe)
     records = result_df[columns].to_records(index=False)
     execMany(sql_query, records)
 

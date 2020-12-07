@@ -1,17 +1,38 @@
-from psycopg2 import connect, execute_values
+from psycopg2 import connect
+from psycopg2.extras import execute_values
+from psycopg2.extensions import register_adapter, AsIs, DateFromPy
+import numpy as np
 from flask import g, current_app
-from sqlalchemy import create_engine, 
+from sqlalchemy import create_engine
+import redis
+
+
+def addapt_numpy_float64(numpy_float64):
+    return AsIs(numpy_float64)
+def addapt_numpy_int64(numpy_int64):
+    return AsIs(numpy_int64)
+def addapt_numpy_datetime(numpy_datetime):
+    return DateFromPy(numpy_datetime)
+
+
+register_adapter(np.float64, addapt_numpy_float64)
+register_adapter(np.int64, addapt_numpy_int64)
+register_adapter(np.datetime64, addapt_numpy_datetime)
 
 def get_db():
     if 'conn' not in g:
         g.conn = connect(**current_app.config['DATABASE'])
-        g.engine = create_engine(::)
     return g.conn
     
-def get_db():
+def get_engine():
     if 'engine' not in g:
         g.engine = create_engine(current_app.config['ENGINE'])
     return g.engine
+
+def get_models_storage():
+    if 'models_storage' not in g:
+        g.models_storage = redis.Redis(**current_app.config['REDIS_MODELS'])
+    return g.models_storage
 
 def getDict(sql_select_query):
     cursor = get_db().cursor()

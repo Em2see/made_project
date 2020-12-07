@@ -5,13 +5,16 @@ services:
     build:
       context: ./services/web
       dockerfile: Dockerfile
-    command: gunicorn --worker-class eventlet --reload --bind 0.0.0.0:5000 manage:app
+    command: gunicorn --worker-class eventlet --reload --bind 0.0.0.0:5000 manage:app --timeout 600
     restart: always
     volumes:
       - ./models:/models/models
       - ./services/web:/app
     expose:
       - 5000
+    depends_on:
+      - redis
+      - postgres
   nginx:
     build: ./services/nginx
     ports:
@@ -19,6 +22,27 @@ services:
     volumes:
       - ./services/web/view:/www/static
     depends_on:
+      - web
+  redis:
+    container_name: redis_host
+    restart: always
+    image: redis:latest
+    ports:
+      - 6379
+    volumes:
+      - /data/data:/data
+  worker:
+    build:
+      context: ./services/web
+      dockerfile: Dockerfile
+    command: celery -A project.celery worker
+    restart: always
+    volumes:
+      - ./models:/models/models
+      - ./services/web:/app
+    depends_on:
+      - redis
+      - postgres
       - web
   postgres:
     container_name: postgres

@@ -45,7 +45,7 @@
 				<td>{{ models_data[key][0] }}</td>
 				<td>{{ models_data[key][1] }}</td>
 				<td>
-					<button class="ui icon button" id="{{ 'test_' + key }}">
+					<button class="ui icon button" id="{{ 'predict_' + key }}">
 						<i class="blind blue icon"></i>
 						Predict
 					</button>
@@ -95,6 +95,15 @@
 			$('#train_{{ key }}').click(function(){
 				$.ajax({
 					url: "{{ url_for('runner.model_train', model_name=key) }}",
+					method: "GET",
+					success: function (data) {
+						console.log(data)
+					}
+				})
+			})
+			$('#predict_{{ key }}').click(function(){
+				$.ajax({
+					url: "{{ url_for('runner.model_predict', model_name=key) }}",
 					method: "GET",
 					success: function (data) {
 						console.log(data)

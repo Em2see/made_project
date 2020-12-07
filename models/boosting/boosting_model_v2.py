@@ -15,7 +15,7 @@ from .grid import Grid
 class Model:
     def __init__(self, params: dict = None):
         params = copy.deepcopy(params) if params is not None else {}
-
+        self.tr = "untrained"
         default_params = {
             'feb_trf_5': 56290839,
             'feb_trf_249': 471020780,
