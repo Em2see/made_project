@@ -1,0 +1,46 @@
+{% extends 'index.html' %}
+{% block content %}
+<div class="ui inverted dimmer">
+    <div class="ui text loader">Loading</div>
+</div>
+<table class="ui celled table">
+    <thead><tr>
+        <th>Task name</th>
+        <th>Args</th>
+        <th>Task start</th>
+        <th>Worker Name</th>
+        <th>Worker PID</th>
+        <th>Task status</th>
+        </tr></thead>
+    <tbody id="tasktable">
+        
+    </tbody>
+
+    <script>
+        $('.dimmer').dimmer('show')
+        function updateState() {
+            $.ajax({
+                url: "{{ url_for('runner.get_tasks_info')}}",
+                method: "GET",
+                success: function (data) {
+                    console.log(data)
+                    $('.dimmer').dimmer('hide')
+                    $("#tasktable").empty()
+                    data.forEach(element => {
+                        $tr = $('<tr></tr>')
+                        element.forEach(cell => {
+                            var $td = $('<td></td>')
+                            $td.html(cell)
+                            $tr.append($td)
+                        })
+                        $("#tasktable").append($tr)
+                    });
+                }
+            })
+            setTimeout(updateState, 10000)
+        }
+
+        updateState()
+        
+    </script>
+{% endblock %}

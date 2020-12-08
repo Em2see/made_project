@@ -35,7 +35,7 @@ services:
     build:
       context: ./services/web
       dockerfile: Dockerfile
-    command: celery -A project.celery worker
+    command: celery -A project.tasks.celery worker -E
     restart: always
     volumes:
       - ./models:/models/models
@@ -52,6 +52,7 @@ services:
       - POSTGRES_USER=smartcapex
       - POSTGRES_PASSWORD=1234
       - POSTGRES_DB=smartcapex
+      - POSTGRES_HOST_AUTH_METHOD=trust
     volumes:
       - /data/db:/var/lib/postgresql
     ports:

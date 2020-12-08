@@ -31,7 +31,7 @@ pointColumns = {
 def record_params(setup_state):
   app = setup_state.app
   viewer.config = {key:value for key,value in app.config.items()}
-  app.logger.info(str(viewer.config))
+  # app.logger.info(str(viewer.config))
   viewer.logger = app.logger
   viewer.paths = viewer.config['PATHS']
 
@@ -53,6 +53,10 @@ def table():
 def models_info():
     models_info = get_models_info()
     return render_template('models_info.html', models_info=models_info)
+
+@viewer.route('/tasks_view', methods=['GET'])
+def tasks_view():
+    return render_template('tasks.html')
 
 @viewer.route('/models_status', methods=['GET'])
 def models_status():

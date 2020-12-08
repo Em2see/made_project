@@ -9,6 +9,7 @@ from statsmodels.tsa.arima_model import ARMA
 from scipy.stats import boxcox
 from scipy.special import inv_boxcox
 from itertools import product
+from datetime import datetime
 
 import warnings
 import sys
@@ -115,7 +116,7 @@ class Model():
         techdict = dict()
 
         for tech in train_df['tech'].unique():
-            techdict[tech] = train_df[(train_df['date_'] >= '2016-08-01')&(train_df['tech'] == tech)]['spd'].mean()
+            techdict[tech] = train_df[(train_df['date_'] >= pd.to_datetime('2016-08-01'))&(train_df['tech'] == tech)]['spd'].mean()
             
         return techdict
         
@@ -127,7 +128,7 @@ class Model():
         celldict90 = dict()
 
         for cell in train_df['id'].unique():
-            celldict90[cell] = train_df[(train_df['date_'] >= '2016-08-01')&(train_df['id']==cell)]['spd'].mean()
+            celldict90[cell] = train_df[(train_df['date_'] >= pd.to_datetime('2016-08-01'))&(train_df['id']==cell)]['spd'].mean()
             
         return celldict90
         

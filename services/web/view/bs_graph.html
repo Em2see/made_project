@@ -28,6 +28,7 @@
 	<script src="https://d3js.org/d3-collection.v1.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
 	<link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+	<script src="/static/add_scripts.js"></script>
 {% endblock %}
 {% block content %}
 	<h1>Base Stations Graph</h1>
@@ -184,13 +185,13 @@
 				.text("Speed");
 		}
 		
-		
 		</script>
 		<script>
 			$('button#plot').click(function(){
 				var bs_ids = $('#bs_ids').val()
 				var models = $('#model').val()
-				var data = JSON.stringify({ models, bs_ids })
+				var period = getPredictPeriod(timeline)
+				var data = JSON.stringify({ models, bs_ids, period })
 				$.ajax({
 					url: "{{ url_for('getter.get_bs_data') }}",
 					method: "POST",

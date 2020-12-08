@@ -1,23 +1,63 @@
-from flask import Blueprint, request, jsonify, make_response, current_app
-import psycopg2
+from flask import Blueprint, request, jsonify, make_response, current_app, url_for
 import pandas as pd
 from datetime import datetime
 from time import sleep
 import os
+from celery.result import AsyncResult
 from .db import get_db, getArray, getDict, update, execMany
-from .models import get_models, models_info, get_trained_model, set_trained_model
+from .models import get_models, models_info, get_trained_model, set_trained_model, is_model_trained
+from datetime import datetime
 
 runner = Blueprint('runner', __name__)
 
+@runner.record
+def record_params(setup_state):
+  app = setup_state.app
+  runner.logger = app.logger
+
 @runner.route('/model/<model_name>/status', methods=['GET'])
 def model_status(model_name):
-    cursor = get_db().cursor()
-    sql_select_query = "SELECT * FROM train_runs WHERE name = '{:s}'".format(model_name)
-    cursor.execute(sql_select_query)
-    record = cursor.fetchall()
-    if len(record) == 0:
+    res = getDict("SELECT * FROM train_run WHERE model_name='{:s}'".format(model_name))
+    if len(res) == 0:
         return jsonify({}), 404
-    return jsonify(record), 200
+    return jsonify(res), 200
+
+def parse_tasks(input_dict, status):
+    out = []
+    for runner_name, task_list in input_dict.items():
+        for task in task_list:
+            task = [
+                task['name'].split('.')[-1],
+                ','.join(task['args']),
+                datetime.fromtimestamp(task['time_start']),
+                task['hostname'],
+                task['worker_pid'],
+                status
+            ]
+            out.append(task)
+    return out
+
+@runner.route('/model/get_tasks')
+def get_tasks_info():
+    from .tasks import get_tasks
+    i = get_tasks()
+
+    out = []
+    out += parse_tasks(i.active(), "active")
+    out += parse_tasks(i.scheduled(), "scheduled")
+    out += parse_tasks(i.reserved(), "reserved")
+    return jsonify(out), 200
+    
+@runner.route('/model/get_tasks_raw')
+def get_tasks_info_raw():
+    from .tasks import get_tasks
+    i = get_tasks()
+    return jsonify({"scheduled": i.scheduled(), 
+                    "active": i.active(), 
+                    "reserved": i.reserved(), 
+                    "destination": i.destination, 
+                    "connection": i.connection
+                    }), 200
 
 @runner.route('/model/<model_name>/info', methods=['GET'])
 def model_info(model_name):
@@ -27,90 +67,42 @@ def model_info(model_name):
 
 @runner.route('/model/<model_name>/train', methods=['GET'])
 def model_train(model_name):
-    models = get_models()
-    # creating train_df
-    train_df = getDF("train")
-    #train_df.to_csv(os.path.abspath('/models/exec.csv'))
-    setStartModel(model_name, "train")
-    models[model_name].train(train_df)
-    set_trained_model(model_name, models[model_name])
-    setStopModel(model_name, "train")
-    return jsonify({"shape": train_df.shape}), 200
+    from .tasks import run_train
+    task = run_train.delay(model_name)
+    return jsonify({}), 202, {'Location': url_for('runner.taskstatus',
+                                                  task_id=task.id, task_type='run_train')}
+                                                
+@runner.route('/model/<task_id>/<task_type>/task_status')
+def taskstatus(task_id, task_type):
+    from .tasks import run_train, run_predict, predict_all, train_all
+    func = eval(task_type)
+    task = func.AsyncResult(task_id)
+    return jsonify({"result": task.result, "ready": task.ready(), "state": task.state, "status": task.status}), 200
 
-@runner.route('/model/<model_name>/predict', methods=['GET'])
+@runner.route('/model/<model_name>/predict', methods=['POST'])
 def model_predict(model_name):
-    # creating train_df
-    test_df = getDF("test")
-    setStartModel(model_name, "test")
-    model = get_trained_model(model_name)
-    if model is None:
+    params = request.get_json()
+    runner.logger.info(params)
+    from .tasks import run_predict
+    if not is_model_trained(model_name):
         return jsonify({"response": "model hasn't been trained"}), 404
-    result_df = model.predict(test_df)
-    writeDF(f"predict_{model_name}", result_df)
-    setStopModel(model_name, "test")
-    return jsonify({"shape": result_df.shape}), 200
-
-def getDF(tableName):
-    if (tableName == 'test'):
-        # here we need to join point table to test table
-        sql_select_query = "SELECT * FROM test"
-    else:
-        sql_select_query = "SELECT *  FROM train"
-    records, cols = getArray(sql_select_query)
-    df = pd.DataFrame(records, columns=cols)
-    return df
-
-def dropAllItems(tableName):
-    update(f"DELETE FROM {tableName}")
-
-def writeDF(tableName, result_df):
-    columns = ['id', 'date_', 'x', 'y', 'tech', 'cap', 'height', 'azimuth', 'spd_pred']
-    sql_query = "INSERT INTO {:s} ({:s}) VALUES %s;".format(tableName, ', '.join(columns))
-    current_app.logger.info(result_df[columns].info())#.pipe(type_pipe)
-    records = result_df[columns].to_records(index=False)
-    execMany(sql_query, records)
-
-def get_time_now():
-    return datetime.now().strftime("%Y%m%d %H:%M:%S")
-
-def setStartModel(modelName, tableName="train"):
-    sql_select_query = "DELETE FROM {:s}_run WHERE model_name='{:s}'; ".format(tableName,modelName)
-    sql_select_query += "INSERT INTO {:s}_run (pid, model_name, start, stop) ".format(tableName, "0")
-    dt_now = get_time_now()
-    sql_select_query += " VALUES ({:d}, '{:s}', '{:s}', NULL)".format(0, modelName, dt_now)
-    update(sql_select_query)
-    
-def setStopModel(modelName, tableName="train"):
-    sql_select_query = "UPDATE {:s}_run SET stop = '{:s}' WHERE model_name = '{:s}'"
-    dt_now = get_time_now()
-    sql_select_query = sql_select_query.format(tableName, dt_now, modelName)
-    update(sql_select_query)
+    task = run_predict.delay(model_name)
+    runner.logger.info(task)
+    return jsonify({}), 202, {'Location': url_for('runner.taskstatus',
+                                                  task_id=task.id, task_type='run_predict')}
 
 @runner.route('/model/predict_all', methods=['GET'])
 def model_predict_all():
-    models = get_models()
-    # creating test_df
-    test_df = getDF("test")
+    from .tasks import predict_all
+    task = predict_all.delay()
 
-    #train all models
-    for model_name, model in models.items():
-        setStartModel(model_name, "test")
-        result_df = model.predict(test_df)
-        writeDF(f"predict_{model_name}", result_df)
-        setStopModel(model_name, "test")
-
-    return jsonify({}), 200
+    return jsonify({}), 202, {'Location': url_for('runner.taskstatus',
+                                                  task_id=task.id, task_type='predict_all')}
 
 @runner.route('/model/run_all', methods=['GET'])
 def model_train_all():
-    models = get_models()
-    # creating train_df
-    train_df = getDF("train")
+    from .tasks import train_all
+    task = train_all.delay()
 
-    #train all models
-    for model_name, model in models.items():
-        setStartModel(model_name, "train")
-        model.train(train_df)
-        setStopModel(model_name, "train")
-
-    return jsonify({}), 200
+    return jsonify({}), 202, {'Location': url_for('runner.taskstatus',
+                                                  task_id=task.id, task_type='train_all')}

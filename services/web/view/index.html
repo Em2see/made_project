@@ -35,6 +35,10 @@
 			href="{{url_for('viewer.bs_graph')}}">
 			Base Stations Graph
 		</a>
+		<a class="{{ ('active ' if request.url_rule.endpoint == 'viewer.tasks_view' else '') + 'item' }}"
+			href="{{url_for('viewer.tasks_view')}}">
+			Tasks
+		</a>
 	</div>
 	<div class="ui segment">
 		<section class="content">

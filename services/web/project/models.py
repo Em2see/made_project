@@ -24,6 +24,10 @@ def get_trained_model(model_name):
         return pickle.loads(storage.get(model_name))
     return None
 
+def is_model_trained(model_name):
+    storage = get_models_storage()
+    return storage.exists(model_name)
+
 def set_trained_model(model_name, model):
     storage = get_models_storage()
     storage.set(model_name, pickle.dumps(model))

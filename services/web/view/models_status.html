@@ -2,6 +2,7 @@
 {% block header %}
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
 	<link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+	<script src="/static/add_scripts.js"></script>
 {% endblock %}
 {% block content %}
 	<h1>Models Status</h1>
@@ -20,7 +21,6 @@
 		</p>
 	</div>
 	
-	
 
 	<table class="ui celled table">
 		<thead><tr>
@@ -36,22 +36,30 @@
 			{% for key, value in models_info.items() %}
 			<tr>
 				<td>{{ value[0] }}</td>
-				<td>
+				<td class="center aligned" id="{{key + '_train_btn'}}">
+					<div class="transition hidden">
+						<i class="spinner icon loading big"></i>
+						Loading
+					</div>
 					<button class="ui icon button" id="{{ 'train_' + key }}">
-						<i class="sitemap blue icon"></i>
+						<i class="sitemap blue icon large"></i>
 						Train
 					</button>
 				</td>
-				<td>{{ models_data[key][0] }}</td>
-				<td>{{ models_data[key][1] }}</td>
-				<td>
+				<td id="{{key + '_train_start'}}">{{ models_data[key][0] }}</td>
+				<td id="{{key + '_train_stop'}}">{{ models_data[key][1] }}</td>
+				<td class="center aligned" id="{{key + '_predict_btn'}}">
+					<div class="transition hidden">
+						<i class="spinner icon loading big"></i>
+						Loading
+					</div>
 					<button class="ui icon button" id="{{ 'predict_' + key }}">
-						<i class="blind blue icon"></i>
+						<i class="blind blue icon large"></i>
 						Predict
 					</button>
 				</td>
-				<td>{{ models_data[key][2] }}</td>
-				<td>{{ models_data[key][3] }}</td>
+				<td id="{{key + '_predict_start'}}">{{ models_data[key][2] }}</td>
+				<td id="{{key + '_predict_stop'}}">{{ models_data[key][3] }}</td>
 			</tr>
 			{% endfor %}
 		</tbody>
@@ -91,22 +99,81 @@
 
 		$('.ui.checkbox').checkbox()
 
-		{% for key, value in models_info.items() %}
-			$('#train_{{ key }}').click(function(){
+		function toggleButtons(model_name, task_type) {
+			var td$ = $(`td#${model_name}_${task_type}_btn`)
+			var isSpinner = $('div', td$).hasClass('transition')
+			var item$ = $('div', td$)
+			var negItem$ = $('button', td$)
+			if (isSpinner) {
+				var tmp$ = item$
+				item$ = negItem$
+				negItem$ = tmp$
+			}
+			item$.addClass('transition')
+			item$.addClass('hidden')
+			negItem$.removeClass('transition')
+			negItem$.removeClass('hidden')
+		}
+
+		function updateRunStopStatus(model_name, task_type) {
+			console.log("updateRunStopStatus", "{{ url_for('runner.model_status', model_name='__template__')}}".replace("__template__", model_name))
+			$.ajax({
+				url: "{{ url_for('runner.model_status', model_name='__template__')}}".replace("__template__", model_name),
+				method: "GET",
+				success: function (data) {
+					console.log(data)
+					$(`td#${model_name}_train_start`).html(data['start'])
+					$(`td#${model_name}_train_stop`).html(data['stop'])
+				}
+			})
+		}
+
+
+		function updateStatus(url_req, model_name, task_type) {
+			//check status
+			$.ajax({
+				url: url_req,
+				method: "GET",
+				success: function (data) {
+					console.log(data)
+					//data = JSON.parse(data)
+					//console.log(data)
+					if (data['ready']) {
+						updateRunStopStatus(model_name, task_type)
+						toggleButtons(model_name, task_type)
+					} else {
+						setTimeout(function() {updateStatus(url_req, model_name, task_type)}, 5000)
+					}
+				}
+			})
+		}
+
+
+		{% for model_name, value in models_info.items() %}
+			$('#train_{{ model_name }}').click(function(){
+				//run loader
+				toggleButtons("{{ model_name }}", "train")
 				$.ajax({
-					url: "{{ url_for('runner.model_train', model_name=key) }}",
+					url: "{{ url_for('runner.model_train', model_name=model_name) }}",
 					method: "GET",
-					success: function (data) {
-						console.log(data)
+					success: function(data, status, request) {
+						status_url = request.getResponseHeader('Location');
+						updateStatus(status_url, "{{model_name}}", "train")
 					}
 				})
 			})
-			$('#predict_{{ key }}').click(function(){
+			$('#predict_{{ model_name }}').click(function(){
+				//run loader
+				toggleButtons("{{ model_name }}", "predict")
+				console.log(timeline.itemsData)
+				var data = getPredictPeriod(timeline)
 				$.ajax({
-					url: "{{ url_for('runner.model_predict', model_name=key) }}",
-					method: "GET",
-					success: function (data) {
-						console.log(data)
+					url: "{{ url_for('runner.model_predict', model_name=model_name) }}",
+					method: "POST",
+					data: JSON.stringify(data),
+					success: function(data, status, request) {
+						status_url = request.getResponseHeader('Location');
+						updateStatus(status_url, "{{model_name}}", "predict")
 					}
 				})
 			})

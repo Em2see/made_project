@@ -5,9 +5,8 @@ import numpy as np
 from copy import copy
 from .getter import getter
 from .viewer import viewer
-from .db import close_db
 from .runner import runner
-from .tasks import make_celery
+from .db import close_db
 import logging
 
 def_path = os.path.abspath("./")
@@ -47,11 +46,9 @@ app.register_blueprint(getter)
 app.register_blueprint(viewer)
 app.register_blueprint(runner)
 
-celery = make_celery(app)
-
 
 @app.teardown_appcontext
 def teardown_df(exception):
     close_db()
 
-
+__all__ = ['app']
