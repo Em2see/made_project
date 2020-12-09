@@ -16,6 +16,14 @@ def get_models():
         g.models = {k:m() for k,m in models_class.items()}
     return g.models
 
+def get_trained_models():
+    storage = get_models_storage()
+    out = []
+    for model_name in models_info.keys():
+        if storage.exists(model_name):
+            out.append(model_name)
+    return out
+
 def get_trained_model(model_name):
     storage = get_models_storage()
     if storage.exists(model_name):

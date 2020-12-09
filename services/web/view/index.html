@@ -31,6 +31,10 @@
 			href="{{url_for('viewer.models_status')}}">
 			Models Status
 		</a>
+		<a class="{{ ('active ' if request.url_rule.endpoint == 'viewer.spd_graph' else '') + 'item' }}"
+			href="{{url_for('viewer.spd_graph')}}">
+			Speed Graph
+		</a>
 		<a class="{{ ('active ' if request.url_rule.endpoint == 'viewer.bs_graph' else '') + 'item' }}"
 			href="{{url_for('viewer.bs_graph')}}">
 			Base Stations Graph

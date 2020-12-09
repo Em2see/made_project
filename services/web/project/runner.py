@@ -7,6 +7,7 @@ from celery.result import AsyncResult
 from .db import get_db, getArray, getDict, update, execMany
 from .models import get_models, models_info, get_trained_model, set_trained_model, is_model_trained
 from datetime import datetime
+import json
 
 runner = Blueprint('runner', __name__)
 
@@ -28,7 +29,7 @@ def parse_tasks(input_dict, status):
         for task in task_list:
             task = [
                 task['name'].split('.')[-1],
-                ','.join(task['args']),
+                json.dumps(task['args']),
                 datetime.fromtimestamp(task['time_start']),
                 task['hostname'],
                 task['worker_pid'],
@@ -86,7 +87,7 @@ def model_predict(model_name):
     from .tasks import run_predict
     if not is_model_trained(model_name):
         return jsonify({"response": "model hasn't been trained"}), 404
-    task = run_predict.delay(model_name)
+    task = run_predict.delay(model_name, params)
     runner.logger.info(task)
     return jsonify({}), 202, {'Location': url_for('runner.taskstatus',
                                                   task_id=task.id, task_type='run_predict')}

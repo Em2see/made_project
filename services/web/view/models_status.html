@@ -65,37 +65,8 @@
 		</tbody>
 	</table>
 	<script>
-		// create some items
-		// note that months are zero-based in the JavaScript Date object, so month 4 is May
-		var items = new vis.DataSet([
-			{start: new Date(2021, 2, 1), 
-			end: new Date(2021, 2, 28), 
-			content: 'Predict period'}
-		]);
-		
-		// create visualization
 		var container = document.getElementById('visualization');
-		var options = {
-			height: '120px',
-			min: new Date(2020, 11, 28),                // lower limit of visible range
-			max: new Date(2021, 3, 1),                // upper limit of visible range
-			zoomMin: 1000 * 60 * 60 * 24,             // one day in milliseconds
-			zoomMax: 1000 * 60 * 60 * 24 * 31 * 3,     // about three months in milliseconds
-			editable: { 
-				remove: false, 
-				updateTime: true
-			},
-			clickToUse: true,
-			onUpdate: function(item, callback){
-				 console.log(item)
-				 callback(item)
-			}
-		};
-
-		// create the timeline
-		var timeline = new vis.Timeline(container);
-		timeline.setOptions(options);
-		timeline.setItems(items);
+		var timeline = createTimeline(container)
 
 		$('.ui.checkbox').checkbox()
 
@@ -167,9 +138,12 @@
 				toggleButtons("{{ model_name }}", "predict")
 				console.log(timeline.itemsData)
 				var data = getPredictPeriod(timeline)
+				console.log(data)
 				$.ajax({
 					url: "{{ url_for('runner.model_predict', model_name=model_name) }}",
 					method: "POST",
+					dataType: 'json',
+					contentType: 'application/json',
 					data: JSON.stringify(data),
 					success: function(data, status, request) {
 						status_url = request.getResponseHeader('Location');

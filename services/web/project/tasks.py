@@ -8,6 +8,7 @@ from .db import get_db, getArray, getDict, update, execMany
 from .models import get_models, models_info, get_trained_model, set_trained_model
 from . import app
 from celery.app.control import Inspect
+from datetime import datetime
 
 
 def make_celery(app):
@@ -33,12 +34,16 @@ def get_tasks():
     inspect = Inspect(app=celery)
     return inspect
 
-def getDF(tableName):
+def getDF(tableName, period=None):
     if (tableName == 'test'):
-        # here we need to join point table to test table
-        sql_select_query = "SELECT * FROM test"
+        if period:
+            #datetime.fromisoformat()
+            sql_select_query = "SELECT * FROM test WHERE date_ >='{:s}' AND date_ <= '{:s}'".format(period['start'], period['end'])
+        else:
+            sql_select_query = "SELECT * FROM test"
     else:
         sql_select_query = "SELECT *  FROM train"
+    
     records, cols = getArray(sql_select_query)
     df = pd.DataFrame(records, columns=cols)
     return df
@@ -87,9 +92,9 @@ def run_train(model_name):
     return "done"
 
 @celery.task()
-def run_predict(model_name):
+def run_predict(model_name, period):
     # creating train_df
-    test_df = getDF("test")
+    test_df = getDF("test", period)
     setStartModel(model_name, "test")
     model = get_trained_model(model_name)
     result_df = model.predict(test_df)

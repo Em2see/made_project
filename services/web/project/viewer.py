@@ -1,7 +1,7 @@
 from flask import Blueprint, url_for, make_response, send_from_directory
 from flask import jsonify, send_file, request, g, render_template, current_app
 from .db import get_db, getArray, getDict
-from .models import get_models_info
+from .models import get_models_info, get_trained_models
 import os
 import uuid
 
@@ -70,10 +70,32 @@ def models_status():
 
     return render_template('models_status.html', models_info=models_info, models_data=models_data)
 
+@viewer.route('/spd_graph', methods=['GET'])
+def spd_graph():
+    trained_models = get_trained_models()
+    selects = []
+    for model_name in trained_models:
+        selects.append("(SELECT '{:s}' AS name, COUNT(*) AS qty FROM predict_{:s})".format(model_name, model_name))
+    selects = " UNION ".join(selects)
+    pred_models, _ = getArray("SELECT name FROM ({:s}) AS tbl WHERE qty > 0;".format(selects))
+    pred_models = [p[0] for p in pred_models]
+    models_info = {k:v for k,v in get_models_info().items() if k in pred_models}
+    bs_ids, _ = getArray("SELECT DISTINCT id FROM ((SELECT id FROM train) UNION (SELECT id FROM test)) AS ids")
+
+    bs_ids = [i[0] for i in bs_ids]
+
+    return render_template('spd_graph.html', models_info=models_info, bs_ids=bs_ids)
+
 @viewer.route('/bsgraph', methods=['GET'])
 def bs_graph():
-    models_info = get_models_info()
-    
+    trained_models = get_trained_models()
+    selects = []
+    for model_name in trained_models:
+        selects.append("(SELECT '{:s}' AS name, COUNT(*) AS qty FROM predict_{:s})".format(model_name, model_name))
+    selects = " UNION ".join(selects)
+    pred_models, _ = getArray("SELECT name FROM ({:s}) AS tbl WHERE qty > 0;".format(selects))
+    pred_models = [p[0] for p in pred_models]
+    models_info = {k:v for k,v in get_models_info().items() if k in pred_models}
     bs_ids, _ = getArray("SELECT DISTINCT id FROM ((SELECT id FROM train) UNION (SELECT id FROM test)) AS ids")
 
     bs_ids = [i[0] for i in bs_ids]
@@ -97,6 +119,15 @@ def bs_graph():
 def pages(filename):
     viewer.logger.info("view %s" % filename)
     return send_file(os.path.join(viewer.paths['view_path'], filename))
+
+@viewer.route('/view/get_time_ranges', methods=['GET'])
+def get_time_ranges():
+    res = getDict("""
+        SELECT 
+            MIN(date_) as start, MAX(date_) as end, 
+            MIN(date_) - 3 * INTERVAL '1 MONTH' as start_b, MAX(date_) + 3 * INTERVAL '1 MONTH' as end_b 
+        FROM test""")
+    return jsonify(res[0]), 200
 
 @viewer.route('/update_params', methods=['POST'])
 def update_params():

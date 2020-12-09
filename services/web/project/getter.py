@@ -6,6 +6,11 @@ from .db import get_db, getArray
 
 getter = Blueprint('getter', __name__)
 
+@getter.record
+def record_params(setup_state):
+  app = setup_state.app
+  getter.logger = app.logger
+
 @getter.route('/get_id/simple/<id>', methods=['GET','POST'])
 def simple_id(id):
     cursor = get_db().cursor()
@@ -26,28 +31,39 @@ def simple_date(date):
         return jsonify({}), 404
     return jsonify(record), 200
 
-def createSelectReq(table_name, point_type, points_ids, period):
-    bs_ids = ','.join(points_ids)
-    return """(
+def createSelectReq(table_name, point_type, points_ids, period=None):
+    suffix = ""
+    if period:
+        suffix = """ AND
+            tbl.date_ >= '{:s}' AND
+            tbl.date_ <= '{:s}'
+        """.format(period['start'], period['end'])
+    sql_params = {
+        "point_type": point_type,
+        "spd_table": "spd" if table_name == "train" else "spd_pred",
+        "table_name": table_name,
+        "bs_ids": ','.join(points_ids),
+        "suffix": suffix
+    }
+    sql = """(
         SELECT 
-            '{:s}' as point_type, tbl.spd, 
+            '{point_type}' as point_type, tbl.{spd_table}, 
             date_part('week', tbl.date_) as week, 
             date_part('year', tbl.date_) as year, tbl.id 
         FROM 
-            test_pred_simple AS tbl 
+            {table_name} AS tbl 
         WHERE 
-            tbl.id in ({:s}) AND
-            tbl.date_ >= '{:s}' AND
-            tbl.date_ <= '{:s}'
-        )""".format(point_type, bs_ids, period['start'], period['end'])
+            tbl.id in ({bs_ids}){suffix})""".format(**sql_params)
+
+    return sql
 
 @getter.route('/bs/data', methods=['POST'])
 def get_bs_data():
     params = request.get_json()
     if len(params['bs_ids']) == 0:
         return jsonify({}), 404
-    selects = [createSelectReq("train", "train", params['bs_ids'], params['period'])]
-    selects += [createSelectReq("predict_" + model, model, ) for model in params['models']]
+    selects = [createSelectReq("train", "train", params['bs_ids'])]
+    selects += [createSelectReq("predict_" + model, model, params['bs_ids'], params['period']) for model in params['models']]
     sql_request = """
         SELECT point_type, AVG(spd), week, year, id 
         FROM ({:s}) AS OUT 
@@ -55,10 +71,12 @@ def get_bs_data():
         ORDER BY year ASC, week ASC;
     """.format(" UNION ".join(selects))
     
-    sql_request = sql_request.format(bs_ids, bs_ids)
     points, columns = getArray(sql_request)
+
+    getter.logger.info("Qty of points %d" % len(points))
+
     prev_models = [m for m in params['models']]
-    prev_trains = [0, 0]
+    prev_trains = [points[0], points[1]]
     prev_points = {m:None for m in params['models']}
     # we assume that points are sorted
     # we need to find previous point
@@ -74,7 +92,7 @@ def get_bs_data():
                         prev_points[point[0]] = prev_trains[-1][:]
                     else:
                         prev_points[point[0]] = prev_trains[0][:]
-                    prev_points[point[0]] = prev_points[point[0]]
+                    #prev_points[point[0]] = prev_points[point[0]]
                 else:
                     prev_models_tmp.append(model)
             prev_models = prev_models_tmp
@@ -83,4 +101,4 @@ def get_bs_data():
 
     points = sorted(points, key=lambda x: x[2] + x[3] * 100)
     
-    return jsonify({"items": npoints, "col_names": columns}), 200
+    return jsonify({"items": points, "col_names": columns}), 200
