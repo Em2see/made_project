@@ -18,7 +18,7 @@ import os
 
 class Model():
     def __init__(self, params: dict = None):
-        def_path = os.path.dirname(os.path.abspath(__name__))
+        def_path = os.path.dirname(os.path.abspath(__file__))
         data_path = os.path.join(def_path, "data")
         self.paths = {
             "default": def_path,
@@ -51,7 +51,7 @@ class Model():
             parameters = product(ps, qs)
             parameters_list = list(parameters)
             
-            results = []
+            #results = []
             best_param = None
             best_aic = float("inf")
             warnings.filterwarnings('ignore')
@@ -67,7 +67,7 @@ class Model():
                     best_model = model
                     best_aic = aic
                     best_param = param
-                results.append([param, model.aic])
+                #results.append([param, model.aic])
             
             # сохраняем кортеж (сота-оптимальные параметры модели)
             self.listofparams.append((cell, best_param))

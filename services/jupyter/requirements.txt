@@ -1,11 +1,5 @@
 numpy
-flask
-flask-socketio
-imutils
-gunicorn
-eventlet
 psycopg2
-pandas
 matplotlib
 statsmodels
 scipy

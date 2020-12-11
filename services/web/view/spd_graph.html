@@ -33,7 +33,7 @@
 	<!-- load the d3.js library -->    
 	<script src="/static/d3.min.js"></script>
 	<script src="/static/d3-time.v2.min.js"></script>
-	<script src="/static/vd3-time-format.v3.min.js"></script>
+	<script src="/static/d3-time-format.v3.min.js"></script>
 	<script src="/static/d3-scale.v3.min.js"></script>
 	<script src="/static/d3-collection.v1.min.js"></script>
 	<script src="/static/vis.min.js"></script>
@@ -50,7 +50,7 @@
 	<div class="ui segment">
 		<p>
 			<label>Base station ID</label>
-			<select class="ui fluid search dropdown" multiple="" id="bs_ids">
+			<select class="ui fluid search dropdown" id="bs_ids">
 				<option value="">Choose BS</option>
 				{% for bs_id in bs_ids %}
 					<option value="{{ bs_id }}">{{ (bs_id|string)[:10] }}</option>
@@ -90,7 +90,7 @@
 		var height = 300 - margin.top - margin.bottom;
 		
 		// Parse the date / time
-		var parseDate = d3.timeParse("%V %Y"); 
+		var parseDate = function(d) { return new Date(Date.parse(d))} ; 
 		
 		// Set the ranges
 		var x = d3.scaleTime().range([0, width]);
@@ -106,22 +106,24 @@
 			.x(function(d) { return x(d.date); })
 			.y(function(d) { return y(d.spd); });
 		
-		var xMean = function(values){ d3.mean(values, function(d) { return d.spd; })}
+		//var xMean = function(values){ d3.mean(values, function(d) { return d.spd; })}
 
-		// Adds the svg canvas
-		var svg = d3.select("div#graph")
-			.append("svg")
-				.attr("width", width + margin.left + margin.right)
-				.attr("height", height + margin.top + margin.bottom)
-			.append("g")
-				.attr("transform", 
-					  "translate(" + margin.left + "," + margin.top + ")");
+		
 		
 		function drawGraph(data) {
+
+			// Adds the svg canvas
+			var svg = d3.select("div#graph")
+				.append("svg")
+					.attr("width", width + margin.left + margin.right)
+					.attr("height", height + margin.top + margin.bottom)
+				.append("g")
+					.attr("transform", 
+						"translate(" + margin.left + "," + margin.top + ")");
 			
 			data.forEach(function(d) {
 				d.tp = d[0]
-				d.date = parseDate(d[2] + ' ' + d[3]);
+				d.date = parseDate(d[2]);
 				d.spd = d[1];
 			})
 			data = data.sort((a,b) => d3.ascending(a.date, b.date));
@@ -138,7 +140,8 @@
 			var classes = {
 				"train": "",
 				"arma": "red_line",
-				"boosting": "purple_line"
+				"boosting": "purple_line",
+				"linear": "orange_line"
 			}
 
 			// Loop through each symbol / key
@@ -174,7 +177,7 @@
 		</script>
 		<script>
 			$('button#plot').click(function(){
-				var bs_ids = $('#bs_ids').val()
+				var bs_ids = [$('#bs_ids').val()]
 				var models = $('#model').val()
 				var period = getPredictPeriod(timeline)
 				var data = JSON.stringify({ models, bs_ids, period })
@@ -186,6 +189,7 @@
 					data: data,
 					success: function (data) {
 						console.log(data)
+						d3.select("svg").remove();
 						drawGraph(data['items'])
 					}
 				})

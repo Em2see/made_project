@@ -33,11 +33,13 @@
 	<!-- load the d3.js library -->    
 	<script src="/static/d3.min.js"></script>
 	<script src="/static/d3-time.v2.min.js"></script>
-	<script src="/static/vd3-time-format.v3.min.js"></script>
+	<script src="/static/d3-time-format.v3.min.js"></script>
 	<script src="/static/d3-scale.v3.min.js"></script>
 	<script src="/static/d3-collection.v1.min.js"></script>
 	<script src="/static/vis.min.js"></script>
 	<link href="/static/vis.min.css" rel="stylesheet" type="text/css" />
+	<link href="/static/range.css" rel="stylesheet" type="text/css" />
+	<script src="/static/range.js"></script>
 	<script src="/static/add_scripts.js"></script>
 {% endblock %}
 {% block content %}
@@ -49,20 +51,25 @@
 	</div>
 	<div class="ui segment">
 		<p>
-			<label>Base station ID</label>
-			<select class="ui fluid search dropdown" multiple="" id="bs_ids">
-				<option value="">Choose BS</option>
-				{% for bs_id in bs_ids %}
-					<option value="{{ bs_id }}">{{ (bs_id|string)[:10] }}</option>
-				{% endfor %}
-			</select>
+			<label>Threshold --- </label>
+			<div id="threshold"></div>
+			<div class="ui range" id="threshold_range"></div>
 			<br/>
 			<label>Models</label>
-			<select class="ui fluid search dropdown" multiple="" id="model">
+			<select class="ui fluid dropdown" id="model">
 				<option value="">Choose Models</option>
 				{% for key, model_name in models_info.items() %}
 					<option value="{{ key }}">{{ model_name[0] }}</option>
 				{% endfor %}
+			</select>
+			<br/>
+			<label>Technology</label>
+			<select class="ui fluid dropdown" id="tech">
+				<option value="">Choose Technology</option>
+				<option value=2>2G</option>
+				<option value=4>3G</option>
+				<option value=5>4G</option>
+				<option value=9>5G</option>
 			</select>
 			<br/>
 			<button class="ui button" id="plot">Plot</button>
@@ -75,81 +82,75 @@
 		</p>
 	</div>
 	<script>
-		var container = document.getElementById('visualization');
-		var timeline = createTimeline(container)
+		var g_threshold = 0;
+		$(document).ready(function() {
+			var container = document.getElementById('visualization');
+			var timeline = createTimeline(container)
 
-		$('.ui.dropdown').dropdown();
-		$('#model').dropdown('set selected', "{{ models_info.keys()|join(',') }}".split(','));
+			$('.ui.dropdown').dropdown();
+			console.log("{{ models_info.keys()[0] }}")
+			$('#model').dropdown('set selected', "{{ models_info.keys()[0] }}");
+
+			$.ajax({
+				url: "{{ url_for('getter.get_thr_range') }}",
+				method: "GET",
+				success: function (data) {
+					$("#threshold").html(data['start'])
+					data['onChange'] = function(val) { g_threshold = val; $("#threshold").html(val) }
+					$('#threshold_range').range(data);
+				}
+			})
+			
+			$('button#plot').click(function(){
+				var threshold = g_threshold
+				var models = $('#model').val()
+				var period = getPredictPeriod(timeline)
+				var data = JSON.stringify({ models, threshold, period })
+				$.ajax({
+					url: "{{ url_for('getter.get_bs_coords') }}",
+					method: "POST",
+					dataType: 'json',
+					contentType: 'application/json',
+					data: data,
+					success: function (data) {
+						console.log(data)
+						d3.select("svg").remove();
+						drawScatterPlot(data['items'])
+					}
+				})
+			});
+		});
 		
 	</script>
 	<script>
-		//var format = d3.timeFormat("%x");
-		// Set the dimensions of the canvas / graph
-		var margin = {top: 30, right: 50 + 50, bottom: 30, left: 50};
-		var width = $('#graph_segment').width() - margin.left - margin.right;
-		var height = 300 - margin.top - margin.bottom;
-		
-		// Parse the date / time
-		var parseDate = d3.timeParse("%V %Y"); 
-		
-		// Set the ranges
-		var x = d3.scaleTime().range([0, width]);
-		var y = d3.scaleLinear().range([height, 0]);
-		
-		// Define the axes
-		var xAxis = d3.axisBottom(x).ticks(20);
-		
-		var yAxis = d3.axisLeft(y).ticks(10);
-		
-		// Define the line
-		var spdLine = d3.line()
-			.x(function(d) { return x(d.date); })
-			.y(function(d) { return y(d.spd); });
-		
-		var xMean = function(values){ d3.mean(values, function(d) { return d.spd; })}
+		function drawScatterPlot(data) {
+			var margin = {top: 30, right: 50 + 50, bottom: 30, left: 50};
+			var width = $('#graph_segment').width() - margin.left - margin.right;
+			var height = 1000 - margin.top - margin.bottom;
+			var colors = {arma: "red", boosting: "purple", linear: "orange", train: "gray"}
+			var zindex = {arma: 1, boosting: 2, linear: 3, train: -1}
 
-		// Adds the svg canvas
-		var svg = d3.select("div#graph")
-			.append("svg")
-				.attr("width", width + margin.left + margin.right)
-				.attr("height", height + margin.top + margin.bottom)
-			.append("g")
-				.attr("transform", 
-					  "translate(" + margin.left + "," + margin.top + ")");
-		
-		function drawGraph(data) {
+			var svg = d3.select("div#graph")
+				.append("svg")
+					.attr("width", width + margin.left + margin.right)
+					.attr("height", height + margin.top + margin.bottom)
+				.append("g")
+					.attr("transform", 
+						"translate(" + margin.left + "," + margin.top + ")");
+
+			var xMin = d3.min(data, d => d[1]) - 100
+			var xMax = d3.max(data, d => d[1]) + 100
+			var yMin = d3.min(data, d => d[2]) - 100
+			var yMax = d3.max(data, d => d[2]) + 100
+
+			var x = d3.scaleLinear().domain([xMin, xMax]).range([0, width]);
+			var y = d3.scaleLinear().domain([yMin, yMax]).range([height, 0]);
 			
-			data.forEach(function(d) {
-				d.tp = d[0]
-				d.date = parseDate(d[2] + ' ' + d[3]);
-				d.spd = d[1];
-			})
-			data = data.sort((a,b) => d3.ascending(a.date, b.date));
-		
-			// Scale the range of the data
-			x.domain(d3.extent(data, function(d) { return d.date; }));
-			y.domain([0, d3.max(data, function(d) { return d.spd; })]); 
-		
-			// Nest the entries by symbol
-			var dataNest = d3.nest()
-				.key(function(d) {return d.tp;})
-				.entries(data);
-		
-			var classes = {
-				"train": "",
-				"arma": "red_line",
-				"boosting": "purple_line"
-			}
+			// Define the axes
+			var xAxis = d3.axisBottom(x).ticks(20);
+			
+			var yAxis = d3.axisLeft(y).ticks(10);
 
-			// Loop through each symbol / key
-			dataNest.forEach(function(d) {
-				var path = svg.append("path")
-						.attr("class", "line")
-						.attr("class", classes[d.key])
-				//console.log(xMean(d.values))
-				path.attr("d", spdLine(d.values)); 
-			});
-		
 			// Add the X Axis
 			svg.append("g")
 				.attr("class", "x axis")
@@ -166,31 +167,25 @@
 				.attr("x", width / 2 )
 				.attr("y", 0 )
 				.style("text-anchor", "middle")
-				.text("Speed");
+				.text("Base Stations");
 
-			addLegend(svg, width)
+			data = data.sort(function(x, y){
+				return d3.ascending(zindex[x[0]], zindex[y[0]])
+			})
+
+			svg.append('g')
+				.selectAll("dot")
+				.data(data)
+				.enter()
+				.append("circle")
+				.attr("cx", function (d) { return x(d[1]); } )
+				.attr("cy", function (d) { return y(d[2]); } )
+				.attr("r", 5)
+				.style("fill", function (d) { return colors[d[0]]; })
+				.style("alpha", 0.3)
+		
 		}
 		
-		</script>
-		<script>
-			$('button#plot').click(function(){
-				var bs_ids = $('#bs_ids').val()
-				var models = $('#model').val()
-				var period = getPredictPeriod(timeline)
-				var data = JSON.stringify({ models, bs_ids, period })
-				$.ajax({
-					url: "{{ url_for('getter.get_bs_data') }}",
-					method: "POST",
-					dataType: 'json',
-					contentType: 'application/json',
-					data: data,
-					success: function (data) {
-						console.log(data)
-						drawGraph(data['items'])
-					}
-				})
-			});
-			
-		</script>
+	</script>
 	
 {% endblock %}

@@ -98,6 +98,7 @@ def run_predict(model_name, period):
     setStartModel(model_name, "test")
     model = get_trained_model(model_name)
     result_df = model.predict(test_df)
+    dropAllItems(f"predict_{model_name}")
     writeDF(f"predict_{model_name}", result_df)
     setStopModel(model_name, "test")
     return "done"

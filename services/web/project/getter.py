@@ -2,7 +2,8 @@ from flask import Blueprint, request, jsonify, g
 import psycopg2
 import pandas as pd
 import datetime
-from .db import get_db, getArray
+from .models import get_models_info
+from .db import get_db, getArray, getDict
 
 getter = Blueprint('getter', __name__)
 
@@ -31,6 +32,76 @@ def simple_date(date):
         return jsonify({}), 404
     return jsonify(record), 200
 
+def createSelectPredictedRange(model_name):
+    sql_params = {
+        "model_name": model_name
+    }
+    sql = """(
+        SELECT 
+            MAX(tbl.spd_pred) as max_spd,
+            AVG(tbl.spd_pred) as mean_spd,
+            MIN(tbl.spd_pred) as min_spd
+        FROM 
+            predict_{model_name} AS tbl 
+        )""".format(**sql_params)
+
+    return sql
+
+@getter.route('/bs_graph/threshold_range', methods=['GET'])
+def get_thr_range():
+    models_info = get_models_info()
+
+    selects = [createSelectPredictedRange(model) for model in models_info.keys()]
+
+    sql_request = """
+        SELECT MIN(min_spd) as min, MAX(mean_spd) as start, MAX(max_spd) as max
+        FROM ({:s}) AS OUT;
+    """.format(" UNION ".join(selects))
+
+    range_ = getDict(sql_request)
+
+    return jsonify(range_[0]), 200
+
+def createSelectPredicted(point_type, period):
+    sql_params = {
+        "point_type": point_type,
+        "start": period['start'],
+        "end": period['end'],
+    }
+    sql = """(
+        SELECT 
+            '{point_type}' as point_type, tbl.spd_pred as spd,
+            tbl.x, tbl.y,
+            date_part('week', tbl.date_) as week, 
+            date_part('year', tbl.date_) as year, tbl.id 
+        FROM 
+            predict_{point_type} AS tbl 
+        WHERE
+            tbl.date_ >= '{start}' AND
+            tbl.date_ <= '{end}'
+            )""".format(**sql_params)
+
+    return sql
+
+@getter.route('/bs_graph/data', methods=['GET','POST'])
+def get_bs_coords():
+    params = request.get_json()
+    selects = [createSelectPredicted(model, params['period']) for model in params['models']]
+
+    sql_request = """
+        (SELECT 'train' as point_type, x, y FROM test)
+        UNION
+        (SELECT point_type, x, y
+        FROM ({:s}) AS OUT
+        GROUP BY point_type, x, y
+        HAVING MAX(spd) < {:.5f});
+    """.format(" UNION ".join(selects), params['threshold'])
+
+    points, columns = getArray(sql_request)
+    points = sorted(points, key=lambda x: x[0])
+    return jsonify({"items": points, "col_names": columns}), 200
+
+
 def createSelectReq(table_name, point_type, points_ids, period=None):
     suffix = ""
     if period:
@@ -40,16 +111,15 @@ def createSelectReq(table_name, point_type, points_ids, period=None):
         """.format(period['start'], period['end'])
     sql_params = {
         "point_type": point_type,
-        "spd_table": "spd" if table_name == "train" else "spd_pred",
+        "spd_table": "spd" if point_type == "train" else "spd_pred",
         "table_name": table_name,
         "bs_ids": ','.join(points_ids),
         "suffix": suffix
     }
     sql = """(
         SELECT 
-            '{point_type}' as point_type, tbl.{spd_table}, 
-            date_part('week', tbl.date_) as week, 
-            date_part('year', tbl.date_) as year, tbl.id 
+            '{point_type}' as point_type, tbl.{spd_table} as spd,
+            tbl.date_
         FROM 
             {table_name} AS tbl 
         WHERE 
@@ -65,10 +135,9 @@ def get_bs_data():
     selects = [createSelectReq("train", "train", params['bs_ids'])]
     selects += [createSelectReq("predict_" + model, model, params['bs_ids'], params['period']) for model in params['models']]
     sql_request = """
-        SELECT point_type, AVG(spd), week, year, id 
+        SELECT point_type, spd, date_ 
         FROM ({:s}) AS OUT 
-        GROUP BY point_type, week, year, id
-        ORDER BY year ASC, week ASC;
+        ORDER BY date_ ASC;
     """.format(" UNION ".join(selects))
     
     points, columns = getArray(sql_request)
@@ -88,17 +157,17 @@ def get_bs_data():
             prev_models_tmp = []
             for model in prev_models:
                 if point[0] == model:
-                    if point[2] == prev_trains[-1][2] and point[3] == prev_trains[-1][3]:
-                        prev_points[point[0]] = prev_trains[-1][:]
-                    else:
+                    if point[2] == prev_trains[-1][2]:
                         prev_points[point[0]] = prev_trains[0][:]
+                    else:
+                        prev_points[point[0]] = prev_trains[-1][:]
                     #prev_points[point[0]] = prev_points[point[0]]
                 else:
                     prev_models_tmp.append(model)
             prev_models = prev_models_tmp
     for model, point in prev_points.items():
         points.append((model,*point[1:]))
-
-    points = sorted(points, key=lambda x: x[2] + x[3] * 100)
+#
+    points = sorted(points, key=lambda x: x[2])
     
     return jsonify({"items": points, "col_names": columns}), 200

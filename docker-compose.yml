@@ -44,6 +44,15 @@ services:
       - redis
       - postgres
       - web
+  jupyter:
+    build: ./services/jupyter
+    #image: jupyter/base-notebook:latest
+    volumes:
+      - ./models:/models/models
+      - ./services/web:/app
+      - /data/work:/work
+    ports:
+      - 8887:8888
   postgres:
     container_name: postgres
     restart: always
