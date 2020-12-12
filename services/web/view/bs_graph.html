@@ -49,44 +49,52 @@
 			<div id="visualization"></div>
 		</p>
 	</div>
-	<div class="ui segment">
-		<p>
-			<label>Threshold --- </label>
-			<div id="threshold"></div>
-			<div class="ui range" id="threshold_range"></div>
-			<br/>
-			<label>Models</label>
-			<select class="ui fluid dropdown" id="model">
-				<option value="">Choose Models</option>
-				{% for key, model_name in models_info.items() %}
-					<option value="{{ key }}">{{ model_name[0] }}</option>
-				{% endfor %}
-			</select>
-			<br/>
-			<label>Technology</label>
-			<select class="ui fluid dropdown" id="tech">
-				<option value="">Choose Technology</option>
-				<option value=2>2G</option>
-				<option value=4>3G</option>
-				<option value=5>4G</option>
-				<option value=9>5G</option>
-			</select>
-			<br/>
-			<button class="ui button" id="plot">Plot</button>
-		</p>
-	</div>
-	<div class="ui segment" id="graph_segment">
-		<p>
-			<div id="graph">
+	<div class="ui grid">
+		<div class="four wide column">
+			<div class="ui segment">
+				<p>
+					<label>Threshold</label>
+					<div id="threshold"></div>
+					<div class="ui range" id="threshold_range"></div>
+					<br/>
+					<label>Models</label>
+					<select class="ui fluid dropdown" id="model">
+						<option value="">Choose Models</option>
+						{% for key, model_name in models_info.items() %}
+							<option value="{{ key }}">{{ model_name[0] }}</option>
+						{% endfor %}
+					</select>
+					<br/>
+					<label>Technology</label>
+					<select class="ui fluid dropdown" id="tech">
+						<option value="">Choose Technology</option>
+						<option value=2>2G</option>
+						<option value=4>3G</option>
+						<option value=5>4G</option>
+						<option value=9>5G</option>
+					</select>
+					<br/>
+					<button class="ui button" id="plot">Plot</button>
+				</p>
 			</div>
-		</p>
+		</div>
+		<div class="twelve wide column">
+			<div class="ui segment" id="graph_segment">
+				<p>
+					<div id="graph">
+					</div>
+				</p>
+			</div>
+		</div>
 	</div>
+	
+	
 	<script>
 		var g_threshold = 0;
 		$(document).ready(function() {
 			var container = document.getElementById('visualization');
 			var timeline = createTimeline(container)
-
+			var thr 
 			$('.ui.dropdown').dropdown();
 			console.log("{{ models_info.keys()[0] }}")
 			$('#model').dropdown('set selected', "{{ models_info.keys()[0] }}");
@@ -95,8 +103,10 @@
 				url: "{{ url_for('getter.get_thr_range') }}",
 				method: "GET",
 				success: function (data) {
+					//thr = d3.scaleLog().domain().range([0, 100])
+					//uthr = d3.scaleLog().domain().range([0, 100])
 					$("#threshold").html(data['start'])
-					data['onChange'] = function(val) { g_threshold = val; $("#threshold").html(val) }
+					data['onChange'] = function(val) { g_threshold = val; $("#threshold").html(val.toFixed(2)) }
 					$('#threshold_range').range(data);
 				}
 			})
@@ -105,7 +115,8 @@
 				var threshold = g_threshold
 				var models = $('#model').val()
 				var period = getPredictPeriod(timeline)
-				var data = JSON.stringify({ models, threshold, period })
+				var tech = $('#tech').val()
+				var data = JSON.stringify({ models: [models], threshold, period, tech })
 				$.ajax({
 					url: "{{ url_for('getter.get_bs_coords') }}",
 					method: "POST",
@@ -126,8 +137,8 @@
 		function drawScatterPlot(data) {
 			var margin = {top: 30, right: 50 + 50, bottom: 30, left: 50};
 			var width = $('#graph_segment').width() - margin.left - margin.right;
-			var height = 1000 - margin.top - margin.bottom;
-			var colors = {arma: "red", boosting: "purple", linear: "orange", train: "gray"}
+			var height = 600 - margin.top - margin.bottom;
+			var colors = {arma: "red", boosting: "purple", linear: "orange", train: "gainsboro"}
 			var zindex = {arma: 1, boosting: 2, linear: 3, train: -1}
 
 			var svg = d3.select("div#graph")
@@ -142,6 +153,8 @@
 			var xMax = d3.max(data, d => d[1]) + 100
 			var yMin = d3.min(data, d => d[2]) - 100
 			var yMax = d3.max(data, d => d[2]) + 100
+
+
 
 			var x = d3.scaleLinear().domain([xMin, xMax]).range([0, width]);
 			var y = d3.scaleLinear().domain([yMin, yMax]).range([height, 0]);

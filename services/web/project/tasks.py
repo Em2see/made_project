@@ -62,14 +62,14 @@ def get_time_now():
     return datetime.now().strftime("%Y%m%d %H:%M:%S")
 
 def setStartModel(modelName, tableName="train"):
-    sql_select_query = "DELETE FROM {:s}_run WHERE model_name='{:s}'; ".format(tableName,modelName)
-    sql_select_query += "INSERT INTO {:s}_run (pid, model_name, start, stop) ".format(tableName, "0")
+    sql_select_query = "DELETE FROM run_{:s} WHERE model_name='{:s}'; ".format(tableName,modelName)
+    sql_select_query += "INSERT INTO run_{:s} (pid, model_name, start, stop) ".format(tableName, "0")
     dt_now = get_time_now()
     sql_select_query += " VALUES ({:d}, '{:s}', '{:s}', NULL)".format(0, modelName, dt_now)
     update(sql_select_query)
     
 def setStopModel(modelName, tableName="train"):
-    sql_select_query = "UPDATE {:s}_run SET stop = '{:s}' WHERE model_name = '{:s}'"
+    sql_select_query = "UPDATE run_{:s} SET stop = '{:s}' WHERE model_name = '{:s}'"
     dt_now = get_time_now()
     sql_select_query = sql_select_query.format(tableName, dt_now, modelName)
     update(sql_select_query)

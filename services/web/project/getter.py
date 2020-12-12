@@ -73,7 +73,7 @@ def createSelectPredicted(point_type, period):
             '{point_type}' as point_type, tbl.spd_pred as spd,
             tbl.x, tbl.y,
             date_part('week', tbl.date_) as week, 
-            date_part('year', tbl.date_) as year, tbl.id 
+            date_part('year', tbl.date_) as year, tbl.id, tbl.tech
         FROM 
             predict_{point_type} AS tbl 
         WHERE
@@ -89,13 +89,13 @@ def get_bs_coords():
     selects = [createSelectPredicted(model, params['period']) for model in params['models']]
 
     sql_request = """
-        (SELECT 'train' as point_type, x, y FROM test)
+        (SELECT 'train' as point_type, x, y FROM test WHERE tech = {tech})
         UNION
         (SELECT point_type, x, y
-        FROM ({:s}) AS OUT
-        GROUP BY point_type, x, y
-        HAVING MAX(spd) < {:.5f});
-    """.format(" UNION ".join(selects), params['threshold'])
+        FROM ({selects}) AS OUT
+        GROUP BY point_type, x, y, tech
+        HAVING MAX(spd) < {thr:.5} AND tech = {tech});
+    """.format(selects=" UNION ".join(selects), thr=params['threshold'], tech=params['tech'])
 
     points, columns = getArray(sql_request)
     points = sorted(points, key=lambda x: x[0])

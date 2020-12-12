@@ -18,7 +18,7 @@ def record_params(setup_state):
 
 @runner.route('/model/<model_name>/status', methods=['GET'])
 def model_status(model_name):
-    res = getDict("SELECT * FROM train_run WHERE model_name='{:s}'".format(model_name))
+    res = getDict("SELECT * FROM run_train WHERE model_name='{:s}'".format(model_name))
     if len(res) == 0:
         return jsonify({}), 404
     return jsonify(res), 200

@@ -46,7 +46,7 @@ def table():
     cursor.execute(sql_select_query)
     points = cursor.fetchall()
     column_names = [pointColumns[desc[0]] for desc in cursor.description if desc[0] not in ['id']]
-
+    viewer.logger.info(points)
     return render_template('table.html', points=points, column_names=column_names)
 
 @viewer.route('/models_info', methods=['GET'])
@@ -62,7 +62,7 @@ def tasks_view():
 def models_status():
     models_info = get_models_info()
     
-    models_data, cols = getArray("SELECT tr.model_name, tr.start, tr.stop, ts.start, ts.stop FROM train_run tr INNER JOIN test_run ts ON ts.model_name = tr.model_name")
+    models_data, cols = getArray("SELECT tr.model_name, tr.start, tr.stop, ts.start, ts.stop FROM run_train tr INNER JOIN run_test ts ON ts.model_name = tr.model_name")
 
     m_names = [i for i in models_info.keys()]
 
