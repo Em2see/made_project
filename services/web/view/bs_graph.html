@@ -94,7 +94,7 @@
 		$(document).ready(function() {
 			var container = document.getElementById('visualization');
 			var timeline = createTimeline(container)
-			var thr 
+			var thr
 			$('.ui.dropdown').dropdown();
 			console.log("{{ models_info.keys()[0] }}")
 			$('#model').dropdown('set selected', "{{ models_info.keys()[0] }}");
@@ -103,16 +103,21 @@
 				url: "{{ url_for('getter.get_thr_range') }}",
 				method: "GET",
 				success: function (data) {
-					//thr = d3.scaleLog().domain().range([0, 100])
-					//uthr = d3.scaleLog().domain().range([0, 100])
+					//console.log(data)
+					thr = d3.scaleLog().domain([1, data['max']]).range([0, 1000])
 					$("#threshold").html(data['start'])
-					data['onChange'] = function(val) { g_threshold = val; $("#threshold").html(val.toFixed(2)) }
-					$('#threshold_range').range(data);
+					data['onChange'] = function(val) { g_threshold = val; $("#threshold").html(thr.invert(val).toFixed(2)); }
+					$('#threshold_range').range({
+						min: 0,
+						max: 1000,
+						start: thr(data['start']),
+						onChange: data['onChange']
+					});
 				}
 			})
 			
 			$('button#plot').click(function(){
-				var threshold = g_threshold
+				var threshold = thr.invert(g_threshold)
 				var models = $('#model').val()
 				var period = getPredictPeriod(timeline)
 				var tech = $('#tech').val()
